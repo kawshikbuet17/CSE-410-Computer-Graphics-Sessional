@@ -43,6 +43,27 @@ void init_pos_u_r_l(){
     l.z = 0;
 }
 
+struct point crossProduct(struct point a, struct point b){
+    struct point result{};
+    result.x = a.y*b.z - b.y*a.z;
+    result.y = a.z*b.x - b.z*a.x;
+    result.z = a.x*b.y - b.x*a.y;
+    return result;
+}
+
+struct point rotateVector(struct point v, struct point reference, double rotationAngle){
+    struct point result{};
+    struct point vperp{};
+
+    vperp = crossProduct(reference, v);
+
+    result.x = v.x * cos(rotationAngle*pi/180) + vperp.x * sin(rotationAngle*pi/180);
+    result.y = v.y * cos(rotationAngle*pi/180) + vperp.y * sin(rotationAngle*pi/180);
+    result.z = v.z * cos(rotationAngle*pi/180) + vperp.z * sin(rotationAngle*pi/180);
+
+    return result;
+}
+
 void drawAxes()
 {
     if(drawaxes==1)
@@ -372,34 +393,6 @@ void draw12Cylinder(){
     glPopMatrix();
 }
 
-void drawSS()
-{
-    glColor3f(1,0,0);
-    drawSquare(20);
-
-    glRotatef(angle,0,0,1);
-    glTranslatef(110,0,0);
-    glRotatef(2*angle,0,0,1);
-    glColor3f(0,1,0);
-    drawSquare(15);
-
-    glPushMatrix();
-    {
-        glRotatef(angle,0,0,1);
-        glTranslatef(60,0,0);
-        glRotatef(2*angle,0,0,1);
-        glColor3f(0,0,1);
-        drawSquare(10);
-    }
-    glPopMatrix();
-
-    glRotatef(3*angle,0,0,1);
-    glTranslatef(40,0,0);
-    glRotatef(4*angle,0,0,1);
-    glColor3f(1,1,0);
-    drawSquare(5);
-}
-
 void drawSquareOfCube(string axis){
     float tx = 0, ty = 0, tz = 0;
     float rx = 0, ry = 0, rz = 0;
@@ -449,27 +442,6 @@ void drawCube(){
     drawSquareOfCube("-y");
 }
 
-void keyboardListener(unsigned char key, int x,int y){
-    switch(key){
-
-        case '1':
-            drawgrid=1-drawgrid;
-            break;
-        case '2':
-            break;
-        case '3':
-            break;
-        case '4':
-            break;
-        case '5':
-            break;
-        case '6':
-            break;
-        default:
-            break;
-    }
-}
-
 void moveForward(){
     pos.x -= l.x;
     pos.y -= l.y;
@@ -500,6 +472,65 @@ void moveDown(){
     pos.y -= u.y;
     pos.z -= u.z;
 }
+
+void lookLeft(){
+    l = rotateVector(l, u, 2);
+    r = rotateVector(r, u, 2);
+}
+
+void lookRight(){
+    l = rotateVector(l, u, -2);
+    r = rotateVector(r, u, -2);
+}
+
+void lookUp(){
+    u = rotateVector(u, r, 2);
+    l = rotateVector(l, r, 2);
+}
+
+void lookDown(){
+    u = rotateVector(u, r, -2);
+    l = rotateVector(l, r, -2);
+}
+
+void tiltClockwise(){
+    u = rotateVector(u, l, -2);
+    r = rotateVector(r, l, -2);
+}
+
+void tiltAntiClockwise(){
+    u = rotateVector(u, l, 2);
+    r = rotateVector(r, l, 2);
+}
+
+void keyboardListener(unsigned char key, int x,int y){
+    switch(key){
+
+        case '1':
+            lookLeft();
+            break;
+        case '2':
+            lookRight();
+            break;
+        case '3':
+            lookUp();
+            break;
+        case '4':
+            lookDown();
+            break;
+        case '5':
+            tiltClockwise();
+            break;
+        case '6':
+            tiltAntiClockwise();
+            break;
+        default:
+            break;
+    }
+}
+
+
+
 
 void specialKeyListener(int key, int x,int y){
     switch(key){
@@ -595,7 +626,7 @@ void display(){
 
     //gluLookAt(100,100,100,	0,0,0,	0,0,1);
     //gluLookAt(200*cos(cameraAngle), 200*sin(cameraAngle), cameraHeight,		0,0,0,		0,0,1);
-    gluLookAt(pos.x,pos.y,pos.z,	pos.x+l.x,pos.y+l.y,pos.z+l.z,	u.x,u.y,u.z);
+    gluLookAt(pos.x,pos.y,pos.z,	pos.x + l.x,pos.y + l.y,pos.z + l.z,	u.x,u.y,u.z);
 
 
     //again select MODEL-VIEW
@@ -609,15 +640,6 @@ void display(){
 
     drawAxes();
     drawGrid();
-
-    //glColor3f(1,0,0);
-
-
-//    drawSS();
-
-//    drawCircle(30,24);
-
-//    drawCone(20,50,24);
 
     draw8Sphere();
     drawCube();
@@ -641,8 +663,8 @@ void init(){
 
     drawgrid=0;
     drawaxes=1;
-//    cameraHeight=150.0;
-//    cameraAngle=1.0;
+    cameraHeight=150.0;
+    cameraAngle=1.0;
     angle=0;
 
     //clear the screen
