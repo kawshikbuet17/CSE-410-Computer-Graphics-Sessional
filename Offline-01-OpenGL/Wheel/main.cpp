@@ -11,6 +11,7 @@ using namespace std;
 
 double cameraHeight;
 double cameraAngle;
+double wheelRadius;
 double wheelAngle;
 double recAngle;
 double angleChange;
@@ -127,29 +128,18 @@ void drawCylinder(double radius, double height, int slices,int stacks)
 }
 
 void drawWheel(){
-    double radius = 20;
+    double radius = wheelRadius;
     double height = 5;
     glColor3f(0.5, 0.5, 0.5);   //red color
-
-    glPushMatrix();
-    glTranslatef(wheelCenter.x,wheelCenter.y,wheelCenter.z);
+    glTranslatef(wheelCenter.x,wheelCenter.y,wheelCenter.z+wheelRadius);
     glRotatef(wheelAngle, 0, 0, 1);
+    glRotatef(recAngle, 0, 1, 0);
     glRotatef(90, 1, 0, 0);
     drawCylinder(radius, height, 20, 20);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslatef(wheelCenter.x,wheelCenter.y,wheelCenter.z);
-    glRotatef(wheelAngle, 0, 0, 1);
+    glRotatef(90, 1, 0, 0);
     drawRectangle(radius, height);
-    glPopMatrix();
-
-    glPushMatrix();
-    glTranslatef(wheelCenter.x,wheelCenter.y,wheelCenter.z);
-    glRotatef(wheelAngle, 0, 0, 1);
     glRotatef(90, 0, 1, 0);
     drawRectangle(radius, height);
-    glPopMatrix();
 }
 
 void keyboardListener(unsigned char key, int x,int y){
@@ -169,12 +159,13 @@ void keyboardListener(unsigned char key, int x,int y){
         case 'w':
             wheelCenter.x += distanceChange* cos(wheelAngle * pi / 180);
             wheelCenter.y += distanceChange* sin(wheelAngle * pi /180);
-
+            recAngle += distanceChange * 360 / ( 2 * pi * wheelRadius);
             cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
             break;
         case 's' :
             wheelCenter.x -= distanceChange* cos(wheelAngle * pi / 180);
             wheelCenter.y -= distanceChange* sin(wheelAngle * pi /180);
+            recAngle -= distanceChange * 360 / ( 2 * pi * wheelRadius);
             cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
             break;
         default:
@@ -279,19 +270,6 @@ void display(){
     drawAxes();
     drawGrid();
     drawWheel();
-    //glColor3f(1,0,0);
-    //drawSquare(10);
-
-//    drawSS();
-
-    //drawCircle(30,24);
-
-    //drawCone(20,50,24);
-
-    //drawSphere(30,24,20);
-
-
-
 
     //ADD this line in the end --- if you use double buffer (i.e. GL_DOUBLE)
     glutSwapBuffers();
@@ -307,10 +285,11 @@ void animate(){
 void init(){
     //codes for initialization
     drawgrid=1;
-    drawaxes=1;
+    drawaxes=0;
     cameraHeight=150.0;
     cameraAngle=1.0;
     angle=0;
+    wheelRadius = 40;
     wheelAngle = 0;
     recAngle = 0;
     angleChange = 5;
