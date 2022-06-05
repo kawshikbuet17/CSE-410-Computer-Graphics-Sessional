@@ -78,7 +78,7 @@ void drawGrid()
 
 void drawRectangle(double a, double b)
 {
-    //glColor3f(1.0,0.0,0.0);
+    glColor3f(0.5,0.5,0.5);
     glBegin(GL_QUADS);{
         glVertex3f( a, b,0);
         glVertex3f( a,-b,0);
@@ -108,7 +108,7 @@ void drawCylinder(double radius, double height, int slices,int stacks)
     //draw quads using generated points
     for(i=0;i<stacks;i++)
     {
-
+        glColor3f((double)i/(double)stacks,(double)i/(double)stacks,(double)i/(double)stacks);
         for(j=0;j<slices;j++)
         {
             glBegin(GL_QUADS);{
@@ -130,7 +130,7 @@ void drawCylinder(double radius, double height, int slices,int stacks)
 void drawWheel(){
     double radius = wheelRadius;
     double height = 5;
-    glColor3f(0.5, 0.5, 0.5);   //red color
+//    glColor3f(0.5, 0.5, 0.5);   //red color
     glTranslatef(wheelCenter.x,wheelCenter.y,wheelCenter.z+wheelRadius);
     glRotatef(wheelAngle, 0, 0, 1);
     glRotatef(recAngle, 0, 1, 0);
@@ -150,23 +150,23 @@ void keyboardListener(unsigned char key, int x,int y){
             break;
         case 'a':
             wheelAngle -= angleChange;
-            cout<<"Wheel Angle = "<<wheelAngle<<endl;
+//            cout<<"Wheel Angle = "<<wheelAngle<<endl;
             break;
         case 'd':
             wheelAngle += angleChange;
-            cout<<"Wheel Angle = "<<wheelAngle<<endl;
+//            cout<<"Wheel Angle = "<<wheelAngle<<endl;
             break;
         case 'w':
             wheelCenter.x += distanceChange* cos(wheelAngle * pi / 180);
             wheelCenter.y += distanceChange* sin(wheelAngle * pi /180);
             recAngle += distanceChange * 360 / ( 2 * pi * wheelRadius);
-            cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
+//            cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
             break;
         case 's' :
             wheelCenter.x -= distanceChange* cos(wheelAngle * pi / 180);
             wheelCenter.y -= distanceChange* sin(wheelAngle * pi /180);
             recAngle -= distanceChange * 360 / ( 2 * pi * wheelRadius);
-            cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
+//            cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
             break;
         default:
             break;
@@ -285,11 +285,11 @@ void animate(){
 void init(){
     //codes for initialization
     drawgrid=1;
-    drawaxes=0;
+    drawaxes=1;
     cameraHeight=150.0;
     cameraAngle=1.0;
     angle=0;
-    wheelRadius = 40;
+    wheelRadius = 30;
     wheelAngle = 0;
     recAngle = 0;
     angleChange = 5;
