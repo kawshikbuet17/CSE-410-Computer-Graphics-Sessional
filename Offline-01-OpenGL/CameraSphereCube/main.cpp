@@ -51,6 +51,15 @@ struct point crossProduct(struct point a, struct point b){
     return result;
 }
 
+struct point normalize(struct point v)
+{
+    double len = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+    v.x /= len;
+    v.y /= len;
+    v.z /=len;
+    return v;
+}
+
 struct point rotateVector(struct point v, struct point reference, double rotationAngle){
     struct point result{};
     struct point vperp{};
@@ -60,7 +69,7 @@ struct point rotateVector(struct point v, struct point reference, double rotatio
     result.x = v.x * cos(rotationAngle*pi/180) + vperp.x * sin(rotationAngle*pi/180);
     result.y = v.y * cos(rotationAngle*pi/180) + vperp.y * sin(rotationAngle*pi/180);
     result.z = v.z * cos(rotationAngle*pi/180) + vperp.z * sin(rotationAngle*pi/180);
-
+    result = normalize(result);
     return result;
 }
 

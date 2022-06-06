@@ -12,8 +12,9 @@ using namespace std;
 double cameraHeight;
 double cameraAngle;
 double wheelRadius;
+double wheelHeight;
 double wheelAngle;
-double recAngle;
+double rimAngle;
 double angleChange;
 double distanceChange;
 int drawgrid;
@@ -59,18 +60,14 @@ void drawGrid()
     {
         glColor3f(0.6, 0.6, 0.6);	//grey
         glBegin(GL_LINES);{
-            for(i=-8;i<=8;i++){
-
-                if(i==0)
-                    continue;	//SKIP the MAIN axes
-
+            for(i=-20;i<=20;i++){
                 //lines parallel to Y-axis
-                glVertex3f(i*10, -90, 0);
-                glVertex3f(i*10,  90, 0);
+                glVertex3f(i*10, -200, 0);
+                glVertex3f(i*10,  200, 0);
 
                 //lines parallel to X-axis
-                glVertex3f(-90, i*10, 0);
-                glVertex3f( 90, i*10, 0);
+                glVertex3f(-200, i*10, 0);
+                glVertex3f( 200, i*10, 0);
             }
         }glEnd();
     }
@@ -78,7 +75,7 @@ void drawGrid()
 
 void drawRectangle(double a, double b)
 {
-    glColor3f(0.5,0.5,0.5);
+    glColor3f(0.6,0.6,0.6);
     glBegin(GL_QUADS);{
         glVertex3f( a, b,0);
         glVertex3f( a,-b,0);
@@ -108,7 +105,10 @@ void drawCylinder(double radius, double height, int slices,int stacks)
     //draw quads using generated points
     for(i=0;i<stacks;i++)
     {
-        glColor3f((double)i/(double)stacks,(double)i/(double)stacks,(double)i/(double)stacks);
+        double red = (double)i/(double)stacks;
+        double green = (double)i/(double)stacks;
+        double blue = (double)i/(double)stacks;
+        glColor3f(red, green, blue);
         for(j=0;j<slices;j++)
         {
             glBegin(GL_QUADS);{
@@ -129,11 +129,10 @@ void drawCylinder(double radius, double height, int slices,int stacks)
 
 void drawWheel(){
     double radius = wheelRadius;
-    double height = 5;
-//    glColor3f(0.5, 0.5, 0.5);   //red color
+    double height = wheelHeight;
     glTranslatef(wheelCenter.x,wheelCenter.y,wheelCenter.z+wheelRadius);
     glRotatef(wheelAngle, 0, 0, 1);
-    glRotatef(recAngle, 0, 1, 0);
+    glRotatef(rimAngle, 0, 1, 0);
     glRotatef(90, 1, 0, 0);
     drawCylinder(radius, height, 20, 20);
     glRotatef(90, 1, 0, 0);
@@ -150,23 +149,19 @@ void keyboardListener(unsigned char key, int x,int y){
             break;
         case 'a':
             wheelAngle -= angleChange;
-//            cout<<"Wheel Angle = "<<wheelAngle<<endl;
             break;
         case 'd':
             wheelAngle += angleChange;
-//            cout<<"Wheel Angle = "<<wheelAngle<<endl;
             break;
         case 'w':
             wheelCenter.x += distanceChange* cos(wheelAngle * pi / 180);
             wheelCenter.y += distanceChange* sin(wheelAngle * pi /180);
-            recAngle += distanceChange * 360 / ( 2 * pi * wheelRadius);
-//            cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
+            rimAngle += distanceChange * 360 / (2 * pi * wheelRadius);
             break;
         case 's' :
             wheelCenter.x -= distanceChange* cos(wheelAngle * pi / 180);
             wheelCenter.y -= distanceChange* sin(wheelAngle * pi /180);
-            recAngle -= distanceChange * 360 / ( 2 * pi * wheelRadius);
-//            cout<<"Wheel Center = "<<wheelCenter.x<<", "<<wheelCenter.y<<endl;
+            rimAngle -= distanceChange * 360 / (2 * pi * wheelRadius);
             break;
         default:
             break;
@@ -289,9 +284,10 @@ void init(){
     cameraHeight=150.0;
     cameraAngle=1.0;
     angle=0;
-    wheelRadius = 30;
+    wheelRadius = 25;
+    wheelHeight = 8;
     wheelAngle = 0;
-    recAngle = 0;
+    rimAngle = 0;
     angleChange = 5;
     distanceChange = 10;
 
