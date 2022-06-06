@@ -451,12 +451,12 @@ void drawCube(){
     drawSquareOfCube("-y");
 }
 
-void moveForward(){
+void moveBackward(){
     pos.x -= l.x;
     pos.y -= l.y;
     pos.z -= l.z;
 }
-void moveBackward(){
+void moveForward(){
     pos.x += l.x;
     pos.y += l.y;
     pos.z += l.z;
@@ -544,10 +544,10 @@ void keyboardListener(unsigned char key, int x,int y){
 void specialKeyListener(int key, int x,int y){
     switch(key){
         case GLUT_KEY_DOWN:		//down arrow key
-            moveForward();
+            moveBackward();
             break;
         case GLUT_KEY_UP:		// up arrow key
-            moveBackward();
+            moveForward();
             break;
         case GLUT_KEY_RIGHT:
             moveRight();
