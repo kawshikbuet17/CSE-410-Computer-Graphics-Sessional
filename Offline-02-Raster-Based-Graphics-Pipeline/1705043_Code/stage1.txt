@@ -1,253 +1,48 @@
-Command = triangle
-Top of stack | Flag 0 | Stack size = 1
-1 0 0 0 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
+0.0000000 0.0000000 0.0000000 
+5.0000000 0.0000000 0.0000000 
+0.0000000 5.0000000 0.0000000 
 
-Input Triangle
-0 0 0
-5 0 0
-0 5 0
+0.0000000 0.0000000 0.0000000 
+10.0000000 0.0000000 0.0000000 
+0.0000000 10.0000000 0.0000000 
 
-Triangle
-0 5 0 1 
-0 0 5 1 
-0 0 0 1 
-1 1 1 1 
+20.0000000 0.0000000 0.0000000 
+30.0000000 0.0000000 0.0000000 
+20.0000000 10.0000000 0.0000000 
 
-After multiplication
-0 5 0 1 
-0 0 5 1 
-0 0 0 1 
-1 1 1 1 
+20.0000000 0.0000000 0.0000000 
+20.0000000 10.0000000 0.0000000 
+10.0000000 0.0000000 0.0000000 
 
-Triangle Output format
-0 0 0 1 
-5 0 0 1 
-0 5 0 1 
-1 1 1 1 
+20.0000000 0.0000000 0.0000000 
+20.0000000 20.0000000 0.0000000 
+0.0000000 0.0000000 0.0000000 
 
-Command = push
-Top of stack | Flag 0 | Stack size = 1
-1 0 0 0 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
+40.0000000 0.0000000 0.0000000 
+50.0000000 0.0000000 0.0000000 
+40.0000000 10.0000000 0.0000000 
 
-After push top of stack
-Top of stack | Flag 1 | Stack size = 1
-1 0 0 0 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
+40.0000000 0.0000000 0.0000000 
+40.0000000 0.0000000 10.0000000 
+40.0000000 10.0000000 0.0000000 
 
-Command = scale
-Top of stack | Flag 1 | Stack size = 1
-1 0 0 0 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
+20.0000000 0.0000000 0.0000000 
+30.0000000 0.0000000 0.0000000 
+20.0000000 10.0000000 0.0000000 
 
-Input Scale
-2 2 2
+0.0000000 0.0000000 0.0000000 
+3.7500000 1.2500000 -3.0618622 
+1.2500000 3.7500000 3.0618622 
 
-Scale matrix:
-2 0 0 0 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
+0.0000000 0.0000000 0.0000000 
+4.0236893 2.5293968 -1.5530861 
+-1.5530861 4.0236893 2.5293968 
 
-After multiplication
-2 0 0 0 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
+0.0000000 0.0000000 0.0000000 
+4.3779751 2.1001555 -1.1927620 
+-1.9087632 4.5215193 0.9552415 
 
-Command = triangle
-Top of stack | Flag 0 | Stack size = 2
-2 0 0 0 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Input Triangle
-0 0 0
-5 0 0
-0 5 0
-
-Triangle
-0 5 0 1 
-0 0 5 1 
-0 0 0 1 
-1 1 1 1 
-
-After multiplication
-0 10 0 2 
-0 0 10 2 
-0 0 0 2 
-1 1 1 1 
-
-Triangle Output format
-0 0 0 1 
-10 0 0 1 
-0 10 0 1 
-2 2 2 1 
-
-Command = translate
-Top of stack | Flag 0 | Stack size = 2
-2 0 0 0 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Input Translation
-10 0 0
-
-Translate matrix:
-1 0 0 10 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
-
-After multiplication
-2 0 0 20 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Command = triangle
-Top of stack | Flag 0 | Stack size = 3
-2 0 0 20 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Input Triangle
-0 0 0
-5 0 0
-0 5 0
-
-Triangle
-0 5 0 1 
-0 0 5 1 
-0 0 0 1 
-1 1 1 1 
-
-After multiplication
-20 30 20 22 
-0 0 10 2 
-0 0 0 2 
-1 1 1 1 
-
-Triangle Output format
-20 0 0 1 
-30 0 0 1 
-20 10 0 1 
-22 2 2 1 
-
-Command = rotate
-Top of stack | Flag 0 | Stack size = 3
-2 0 0 20 
-0 2 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Input Rotation
-90 0 0 1
-
-Rotate matrix:
-6.12303e-17 -1 0 0 
-1 6.12303e-17 0 0 
-0 0 1 0 
-0 0 0 1 
-
-After multiplication
-1.22461e-16 -2 0 20 
-2 1.22461e-16 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Command = triangle
-Top of stack | Flag 0 | Stack size = 4
-1.22461e-16 -2 0 20 
-2 1.22461e-16 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Input Triangle
-0 0 0
-5 0 0
-0 5 0
-
-Triangle
-0 5 0 1 
-0 0 5 1 
-0 0 0 1 
-1 1 1 1 
-
-After multiplication
-20 20 10 18 
-0 10 6.12303e-16 2 
-0 0 0 2 
-1 1 1 1 
-
-Triangle Output format
-20 0 0 1 
-20 10 0 1 
-10 6.12303e-16 0 1 
-18 2 2 1 
-
-Command = pop
-Top of stack | Flag 0 | Stack size = 4
-1.22461e-16 -2 0 20 
-2 1.22461e-16 0 0 
-0 0 2 0 
-0 0 0 1 
-
-Stack size = 4 | Current Flag is 0
-Popping
-Stack size = 3 | Current Flag is 0
-Popping
-Stack size = 2 | Current Flag is 0
-Popping
-Stack size = 1 | Current Flag is 1
-Popping Stopped
-
-Command = triangle
-Top of stack | Flag 0 | Stack size = 1
-1 0 0 0 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
-
-Input Triangle
-0 0 0
-20 0 0
-0 20 0
-
-Triangle
-0 20 0 1 
-0 0 20 1 
-0 0 0 1 
-1 1 1 1 
-
-After multiplication
-0 20 0 1 
-0 0 20 1 
-0 0 0 1 
-1 1 1 1 
-
-Triangle Output format
-0 0 0 1 
-20 0 0 1 
-0 20 0 1 
-1 1 1 1 
-
-Command = end
-Top of stack | Flag 0 | Stack size = 1
-1 0 0 0 
-0 1 0 0 
-0 0 1 0 
-0 0 0 1 
+0.0000000 0.0000000 0.0000000 
+2.8448276 -3.7335790 -1.7225980 
+2.6990962 3.2758621 -2.6426516 
 

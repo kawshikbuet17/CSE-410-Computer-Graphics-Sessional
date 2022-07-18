@@ -24,7 +24,6 @@ vector<vector<double>> identityMatrix(){
     return matrix;
 }
 
-// transpose of a matrix
 vector<vector<double>> transposeMatrix(vector<vector<double>> matrix){
     vector<vector<double>> transposed(4, vector<double>(4, 0));
     for(int i = 0; i < 4; i++){
@@ -34,7 +33,6 @@ vector<vector<double>> transposeMatrix(vector<vector<double>> matrix){
     }
     return transposed;
 }
-
 
 vector<vector<double>> matrixMultiplication(vector<vector<double>> A, vector<vector<double>> B){
     vector<vector<double>> C(4, vector<double>(4, 0));
@@ -56,12 +54,7 @@ vector<vector<double>> triangle(ifstream &fin, ofstream &fout){
     fin >> p2.x >> p2.y >> p2.z;
     fin >> p3.x >> p3.y >> p3.z;
 
-    fout << "Input Triangle" << endl;
-    fout << p1.x << " " << p1.y << " " << p1.z << endl;
-    fout << p2.x << " " << p2.y << " " << p2.z << endl;
-    fout << p3.x << " " << p3.y << " " << p3.z << endl;
-    fout << endl;
-
+    //making the points as homogeneous coordinates
     vector<vector<double>> matrix(4, vector<double>(4, 0));
     matrix[0][0] = p1.x;
     matrix[1][0] = p1.y;
@@ -90,10 +83,6 @@ vector<vector<double>> translate(ifstream &fin, ofstream &fout){
     double tx, ty, tz;
     fin >> tx >> ty >> tz;
 
-    fout << "Input Translation" << endl;
-    fout << tx << " " << ty << " " << tz << endl;
-    fout << endl;
-
     //make translation matrix vector
     vector<vector<double>> matrix(4, vector<double>(4, 0));
     matrix[0][0] = 1;
@@ -110,10 +99,6 @@ vector<vector<double>> translate(ifstream &fin, ofstream &fout){
 vector<vector<double>> scale(ifstream &fin, ofstream &fout){
     double sx, sy, sz;
     fin >> sx >> sy >> sz;
-
-    fout << "Input Scale" << endl;
-    fout << sx << " " << sy << " " << sz << endl;
-    fout << endl;
 
     //make scale matrix vector
     vector<vector<double>> matrix(4, vector<double>(4, 0));
@@ -157,10 +142,6 @@ vector<vector<double>> rotate(ifstream &fin, ofstream &fout){
     double theta, ax, ay, az;
     fin >> theta >> ax >> ay >> az;
 
-    fout << "Input Rotation" << endl;
-    fout << theta << " " << ax << " " << ay << " " << az << endl;
-    fout << endl;
-
     double sqrtaxayaz = sqrt(ax * ax + ay * ay + az * az);
 
     Point a = Point((double)ax / sqrtaxayaz, (double)ay / sqrtaxayaz, (double)az / sqrtaxayaz);
@@ -200,24 +181,20 @@ void push(stack<pair<vector<vector<double>>, bool>>& matrixStack, vector<vector<
 
 void pop(stack<pair<vector<vector<double>>, bool>>& matrixStack, ofstream &fout){
     while(!matrixStack.empty()){
-        fout << "Stack size = " << matrixStack.size() << " | Current Flag is " << matrixStack.top().second << endl;
         if(matrixStack.top().second){
             matrixStack.top().second = false;
-            fout << "Popping Stopped" << endl;
             break;
         }
         else{
-            fout << "Popping" << endl;
             matrixStack.pop();
         }
     }
-    fout << endl;
 }
 
 void outputToFile(ofstream &fout, vector<vector<double>> matrix){
-    for(int i = 0; i < 4; i++){
-        for(int j = 0; j < 4; j++){
-            fout << matrix[i][j] << " ";
+    for(int i = 0; i < 3; i++){
+        for(int j = 0; j < 3; j++){
+            fout <<fixed <<setprecision(7) << matrix[i][j] << " ";
         }
         fout << endl;
     }
@@ -247,26 +224,13 @@ int main(){
 
     string command;
     while(fin >> command){
-        fout << "Command = " << command << endl;
-        if(!matrixStack.empty()){
-            fout<<"Top of stack | Flag " << matrixStack.top().second << " | Stack size = "<< matrixStack.size() <<endl;
-            outputToFile(fout, matrixStack.top().first);
-        }else{
-            fout<<"Stack is Empty"<<endl;
-        }
-
         if(command == "end"){
             break;
         }
         else if(command == "triangle"){
             matrix = triangle(fin, fout);
-            fout<<"Triangle"<<endl;
-            outputToFile(fout, matrix);
             if(!matrixStack.empty()){
                 vector<vector<double>> temp = matrixMultiplication(matrixStack.top().first, matrix);
-                fout << "After multiplication" << endl;
-                outputToFile(fout, temp);
-                fout << "Triangle Output format"<<endl;
                 outputToFile(fout, transposeMatrix(temp));
             }else{
                 fout<<"Error: stack is empty"<<endl;
@@ -274,12 +238,8 @@ int main(){
         }
         else if(command == "translate"){
             matrix = translate(fin, fout);
-            fout<<"Translate matrix:"<<endl;
-            outputToFile(fout, matrix);
             if(!matrixStack.empty()){
                 vector<vector<double>> temp = matrixMultiplication(matrixStack.top().first, matrix);
-                fout << "After multiplication" << endl;
-                outputToFile(fout, temp);
                 push(matrixStack, temp, false);
             }else{
                 fout<<"Error: stack is empty"<<endl;
@@ -287,12 +247,8 @@ int main(){
         }
         else if(command == "scale"){
             matrix = scale(fin, fout);
-            fout<<"Scale matrix:"<<endl;
-            outputToFile(fout, matrix);
             if(!matrixStack.empty()){
                 vector<vector<double>> temp = matrixMultiplication(matrixStack.top().first, matrix);
-                fout << "After multiplication" << endl;
-                outputToFile(fout, temp);
                 push(matrixStack, temp, false);
 
             }else{
@@ -301,12 +257,8 @@ int main(){
         }
         else if(command == "rotate"){
             matrix = rotate(fin, fout);
-            fout<<"Rotate matrix:"<<endl;
-            outputToFile(fout, matrix);
             if(!matrixStack.empty()){
                 vector<vector<double>> temp = matrixMultiplication(matrixStack.top().first, matrix);
-                fout << "After multiplication" << endl;
-                outputToFile(fout, temp);
                 push(matrixStack, temp, false);
 
             }else{
@@ -318,9 +270,6 @@ int main(){
             matrix = matrixStack.top().first;
             matrixStack.pop();
             push(matrixStack, matrix, true);
-            fout << "After push top of stack" << endl;
-            fout<<"Top of stack | Flag " << matrixStack.top().second << " | Stack size = "<< matrixStack.size() <<endl;
-            outputToFile(fout, matrixStack.top().first);
         }
         else if(command == "pop"){
             if(!matrixStack.empty()){
