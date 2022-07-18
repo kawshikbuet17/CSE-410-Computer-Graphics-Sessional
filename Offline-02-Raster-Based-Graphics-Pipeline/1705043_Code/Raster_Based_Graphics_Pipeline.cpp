@@ -3,6 +3,14 @@ using namespace std;
 
 #define pi 2*acos(0.0)
 
+double eyeX, eyeY, eyeZ;
+double lookX, lookY, lookZ;
+double upX, upY, upZ;
+double fovY, aspectRatio, near, far;
+
+vector<vector<double>> matrix;
+stack<pair<vector<vector<double>>, bool>> matrixStack;
+
 class Point{
     public:
         double x, y, z;
@@ -13,6 +21,12 @@ class Point{
             this->x = x;
             this->y = y;
             this->z = z;
+        }
+        void normalize(){
+            double len = sqrt(x*x + y*y + z*z);
+            x /= len;
+            y /= len;
+            z /= len;
         }
 };
 
@@ -48,11 +62,18 @@ vector<vector<double>> matrixMultiplication(vector<vector<double>> A, vector<vec
     return C;
 }
 
-vector<vector<double>> triangle(ifstream &fin, ofstream &fout){
+vector<vector<double>> triangle(ifstream &fin, ofstream &fout, int stage = 1, Point *a = NULL, Point *b = NULL, Point *c = NULL){
     Point p1, p2, p3;
-    fin >> p1.x >> p1.y >> p1.z;
-    fin >> p2.x >> p2.y >> p2.z;
-    fin >> p3.x >> p3.y >> p3.z;
+    if(stage == 1){
+        fin >> p1.x >> p1.y >> p1.z;
+        fin >> p2.x >> p2.y >> p2.z;
+        fin >> p3.x >> p3.y >> p3.z;
+    }
+    else if(stage == 2){
+        p1 = *a;
+        p2 = *b;
+        p3 = *c;
+    }
 
     //making the points as homogeneous coordinates
     vector<vector<double>> matrix(4, vector<double>(4, 0));
@@ -137,7 +158,6 @@ Point Rodrigues(Point a, Point x, double theta){
     return p;
 }
 
-
 vector<vector<double>> rotate(ifstream &fin, ofstream &fout){
     double theta, ax, ay, az;
     fin >> theta >> ax >> ay >> az;
@@ -201,27 +221,15 @@ void outputToFile(ofstream &fout, vector<vector<double>> matrix){
     fout << endl;
 }
 
-int main(){
-    vector<vector<double>> matrix;
-    stack<pair<vector<vector<double>>, bool>> matrixStack;
+void fileIOtest(ifstream &fin, ofstream &fout){
+    double a, b, c;
+    while(fin>>a>>b>>c){
+        fout << a << " " << b << " " << c << endl;
+    }
+}
+
+void stage1(ifstream &fin, ofstream &fout){
     push(matrixStack, identityMatrix(), false);
-
-    ifstream fin;
-    fin.open("scene.txt");
-
-    ofstream fout;
-    fout.open("stage1.txt");
-
-    double eyeX, eyeY, eyeZ;
-    double lookX, lookY, lookZ;
-    double upX, upY, upZ;
-    double fovY, aspectRatio, near, far;
-
-    fin >> eyeX >> eyeY >> eyeZ;
-    fin >> lookX >> lookY >> lookZ;
-    fin >> upX >> upY >> upZ;
-    fin >> fovY >> aspectRatio >> near >> far;
-
     string command;
     while(fin >> command){
         if(command == "end"){
@@ -279,7 +287,68 @@ int main(){
             }    
         }
     }
+}
+
+void stage2(ifstream &fin, ofstream &fout){
+    Point l = Point(lookX-eyeX, lookY-eyeY, lookZ-eyeZ);
+    l.normalize();
+
+    Point up = Point(upX, upY, upZ);
+
+    Point r = crossProduct(l, up);
+    r.normalize();
+
+    Point u = crossProduct(r, l);
+
+    vector<vector<double>> T = identityMatrix();
+    T[0][3] = -eyeX;
+    T[1][3] = -eyeY;
+    T[2][3] = -eyeZ;
+    vector<vector<double>> R = identityMatrix();
+    R[0][0] = r.x;
+    R[0][1] = r.y;
+    R[0][2] = r.z;
+    R[1][0] = u.x;
+    R[1][1] = u.y;
+    R[1][2] = u.z;
+    R[2][0] = -l.x;
+    R[2][1] = -l.y;
+    R[2][2] = -l.z;
+    
+    //view transformation matrix
+    vector<vector<double>> V = matrixMultiplication(T, R);
+
+    Point *p1, *p2, *p3;
+    p1 = new Point();
+    p2 = new Point();
+    p3 = new Point();
+    while(fin >> p1->x >> p1->y >> p1->z >> p2->x >> p2->y >> p2->z >> p3->x >> p3->y >> p3->z){
+        vector<vector<double>> stage1Tringle =  triangle(fin, fout, 2, p1, p2, p3);
+        vector<vector<double>> viewTransformMatrix = matrixMultiplication(V, stage1Tringle);
+        outputToFile(fout, transposeMatrix(viewTransformMatrix));
+    }
+}
+
+
+int main(){
+    ifstream fin;
+    ofstream fout;
+    fin.open("scene.txt");
+
+    fin >> eyeX >> eyeY >> eyeZ;
+    fin >> lookX >> lookY >> lookZ;
+    fin >> upX >> upY >> upZ;
+    fin >> fovY >> aspectRatio >> near >> far;
+    
+    fout.open("stage1.txt");
+    
+    stage1(fin, fout);
 
     fin.close();
     fout.close();
+
+    fin.open("stage1.txt");
+    fout.open("stage2.txt");
+    stage2(fin, fout);
+
 }
