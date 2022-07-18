@@ -69,7 +69,7 @@ vector<vector<double>> triangle(ifstream &fin, ofstream &fout, int stage = 1, Po
         fin >> p2.x >> p2.y >> p2.z;
         fin >> p3.x >> p3.y >> p3.z;
     }
-    else if(stage == 2){
+    else if(stage == 2 or stage == 3){
         p1 = *a;
         p2 = *b;
         p3 = *c;
@@ -228,6 +228,15 @@ void fileIOtest(ifstream &fin, ofstream &fout){
     }
 }
 
+//scale homogeneous matrix
+void scaleHomogeneous(vector<vector<double>> &matrix){
+    for(int i = 0; i< 4; i++){
+        for(int j = 0; j< 4; j++){
+            matrix[i][j] /= matrix[3][j];
+        }
+    }
+}
+
 void stage1(ifstream &fin, ofstream &fout){
     push(matrixStack, identityMatrix(), false);
     string command;
@@ -239,6 +248,7 @@ void stage1(ifstream &fin, ofstream &fout){
             matrix = triangle(fin, fout);
             if(!matrixStack.empty()){
                 vector<vector<double>> temp = matrixMultiplication(matrixStack.top().first, matrix);
+                scaleHomogeneous(temp);
                 outputToFile(fout, transposeMatrix(temp));
             }else{
                 fout<<"Error: stack is empty"<<endl;
@@ -325,30 +335,60 @@ void stage2(ifstream &fin, ofstream &fout){
     while(fin >> p1->x >> p1->y >> p1->z >> p2->x >> p2->y >> p2->z >> p3->x >> p3->y >> p3->z){
         vector<vector<double>> stage1Tringle =  triangle(fin, fout, 2, p1, p2, p3);
         vector<vector<double>> viewTransformMatrix = matrixMultiplication(V, stage1Tringle);
+        scaleHomogeneous(viewTransformMatrix);
         outputToFile(fout, transposeMatrix(viewTransformMatrix));
     }
 }
 
+void stage3(ifstream &fin, ofstream &fout){
+    double fovX = fovY * aspectRatio;
+    double r = near * tan(fovX/2 * pi / 180);
+    double t = near * tan(fovY/2 * pi / 180);
+
+    //projection transformation matrix
+    vector<vector<double>> P = identityMatrix();
+    P[0][0] = near/r;
+    P[1][1] = near/t;
+    P[2][2] = -(far + near)/(far - near);
+    P[2][3] = -2*far*near/(far - near);
+    P[3][2] = -1;
+    P[3][3] = 0;
+
+    Point *p1, *p2, *p3;
+    p1 = new Point();
+    p2 = new Point();
+    p3 = new Point();
+    while(fin >> p1->x >> p1->y >> p1->z >> p2->x >> p2->y >> p2->z >> p3->x >> p3->y >> p3->z){
+        vector<vector<double>> stage2Tringle =  triangle(fin, fout, 3, p1, p2, p3);
+        vector<vector<double>> projectionTransformMatrix = matrixMultiplication(P, stage2Tringle);
+        scaleHomogeneous(projectionTransformMatrix);
+        outputToFile(fout, transposeMatrix(projectionTransformMatrix));
+    }
+}
 
 int main(){
     ifstream fin;
     ofstream fout;
-    fin.open("scene.txt");
 
+    fin.open("scene.txt");
+    fout.open("stage1.txt");
     fin >> eyeX >> eyeY >> eyeZ;
     fin >> lookX >> lookY >> lookZ;
     fin >> upX >> upY >> upZ;
     fin >> fovY >> aspectRatio >> near >> far;
-    
-    fout.open("stage1.txt");
-    
     stage1(fin, fout);
-
     fin.close();
     fout.close();
 
     fin.open("stage1.txt");
     fout.open("stage2.txt");
     stage2(fin, fout);
+    fin.close();
+    fout.close();
 
+    fin.open("stage2.txt");
+    fout.open("stage3.txt");
+    stage3(fin, fout);
+    fin.close();
+    fout.close();
 }
