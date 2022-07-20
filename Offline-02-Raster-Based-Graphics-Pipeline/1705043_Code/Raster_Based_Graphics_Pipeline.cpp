@@ -1,15 +1,9 @@
 #include<bits/stdc++.h>
 using namespace std;
+#include "bitmap_image.hpp"
 
 #define pi 2*acos(0.0)
-
-double eyeX, eyeY, eyeZ;
-double lookX, lookY, lookZ;
-double upX, upY, upZ;
-double fovY, aspectRatio, near, far;
-
-vector<vector<double>> matrix;
-stack<pair<vector<vector<double>>, bool>> matrixStack;
+#define INF INT_MAX
 
 class Point{
     public:
@@ -29,6 +23,49 @@ class Point{
             z /= len;
         }
 };
+
+class Color{
+    public:
+        double r, g, b;
+        Color(){
+            r = g = b = 0.0;
+        }
+        Color(double r, double g, double b){
+            this->r = r;
+            this->g = g;
+            this->b = b;
+        }
+};
+
+class Triangle{
+    public:
+        Point points[3];
+        Color colors;
+        Triangle(Point p1, Point p2, Point p3, Color rgb){
+            points[0] = p1;
+            points[1] = p2;
+            points[2] = p3;
+
+            colors = rgb;
+        }
+};
+
+double eyeX, eyeY, eyeZ;
+double lookX, lookY, lookZ;
+double upX, upY, upZ;
+double fovY, aspectRatio, near, far;
+
+vector<vector<double>> matrix;
+stack<pair<vector<vector<double>>, bool>> matrixStack;
+
+int Screen_Width, Screen_Height;
+double leftLimitOfX, rightLimitOfX, bottomLimitOfY, topLimitOfY, frontLimitOfZ, rearLimitOfZ;
+
+double dx, dy;
+double Top_Y, Bottom_Y, Left_X, Right_X;
+double **zBuffer;
+Color **frameBuffer;
+
 
 vector<vector<double>> identityMatrix(){
     vector<vector<double>> matrix(4, vector<double>(4, 0));
@@ -62,7 +99,7 @@ vector<vector<double>> matrixMultiplication(vector<vector<double>> A, vector<vec
     return C;
 }
 
-vector<vector<double>> triangle(ifstream &fin, ofstream &fout, int stage = 1, Point *a = NULL, Point *b = NULL, Point *c = NULL){
+vector<vector<double>> inputTriangle(ifstream &fin, ofstream &fout, int stage = 1, Point *a = NULL, Point *b = NULL, Point *c = NULL){
     Point p1, p2, p3;
     if(stage == 1){
         fin >> p1.x >> p1.y >> p1.z;
@@ -245,7 +282,7 @@ void stage1(ifstream &fin, ofstream &fout){
             break;
         }
         else if(command == "triangle"){
-            matrix = triangle(fin, fout);
+            matrix = inputTriangle(fin, fout);
             if(!matrixStack.empty()){
                 vector<vector<double>> temp = matrixMultiplication(matrixStack.top().first, matrix);
                 scaleHomogeneous(temp);
@@ -333,7 +370,7 @@ void stage2(ifstream &fin, ofstream &fout){
     p2 = new Point();
     p3 = new Point();
     while(fin >> p1->x >> p1->y >> p1->z >> p2->x >> p2->y >> p2->z >> p3->x >> p3->y >> p3->z){
-        vector<vector<double>> stage1Tringle =  triangle(fin, fout, 2, p1, p2, p3);
+        vector<vector<double>> stage1Tringle =  inputTriangle(fin, fout, 2, p1, p2, p3);
         vector<vector<double>> viewTransformMatrix = matrixMultiplication(V, stage1Tringle);
         scaleHomogeneous(viewTransformMatrix);
         outputToFile(fout, transposeMatrix(viewTransformMatrix));
@@ -359,12 +396,306 @@ void stage3(ifstream &fin, ofstream &fout){
     p2 = new Point();
     p3 = new Point();
     while(fin >> p1->x >> p1->y >> p1->z >> p2->x >> p2->y >> p2->z >> p3->x >> p3->y >> p3->z){
-        vector<vector<double>> stage2Tringle =  triangle(fin, fout, 3, p1, p2, p3);
+        vector<vector<double>> stage2Tringle =  inputTriangle(fin, fout, 3, p1, p2, p3);
         vector<vector<double>> projectionTransformMatrix = matrixMultiplication(P, stage2Tringle);
         scaleHomogeneous(projectionTransformMatrix);
         outputToFile(fout, transposeMatrix(projectionTransformMatrix));
     }
 }
+
+double **initializeZBuffer(){
+    double **zBuffer = new double*[Screen_Width];
+    for(int i = 0; i < Screen_Width; i++){
+        zBuffer[i] = new double[Screen_Height];
+    }
+    for(int i = 0; i < Screen_Width; i++){
+        for(int j = 0; j < Screen_Height; j++){
+            zBuffer[i][j] = rearLimitOfZ;
+        }
+    }
+    return zBuffer;
+}
+
+
+Color **initializeFrameBuffer(){
+    Color **frameBuffer = new Color*[Screen_Width];
+    for(int i = 0; i < Screen_Width; i++){
+        frameBuffer[i] = new Color[Screen_Height];
+    }
+    for(int i = 0; i < Screen_Width; i++){
+        for(int j = 0; j < Screen_Height; j++){
+            frameBuffer[i][j] = Color(0, 0, 0);
+        }
+    }
+    return frameBuffer;
+}
+
+
+
+void readData(ifstream &fin){
+    fin >> Screen_Height >> Screen_Width;
+    fin >> leftLimitOfX;
+    fin >> bottomLimitOfY;
+    fin >> frontLimitOfZ >> rearLimitOfZ;
+
+    rightLimitOfX = -leftLimitOfX;
+    topLimitOfY = -bottomLimitOfY;
+
+    fin.close();
+}
+
+int findTopScanLine(Triangle *triangle){
+    double max_y = max(triangle->points[0].y, max(triangle->points[1].y, triangle->points[2].y));
+    
+    int top_scanline;
+
+    if(max_y >= Top_Y){
+        top_scanline = 0;
+    }
+    else{
+        top_scanline = round((Top_Y - max_y) / dy);
+    }
+    cout<<"top_scanline: "<<top_scanline<<endl;
+    return top_scanline;
+}
+
+int findBottomScanLine(Triangle *triangle){
+    double min_y = min(triangle->points[0].y, min(triangle->points[1].y, triangle->points[2].y));
+    
+    int bottom_scanline;
+
+    if(min_y <= Bottom_Y){
+        bottom_scanline = Screen_Height - 1;
+    }
+    else{
+        bottom_scanline = Screen_Height - round((min_y - Bottom_Y) / dy) - 1;
+    }
+    cout<<"bottom_scanline: "<<bottom_scanline<<endl;
+    return bottom_scanline;
+}
+
+int findLeftIntersectingColumn(double xa){
+    int left_intersecting_column = round((xa - Left_X) / dx);
+    left_intersecting_column = max(left_intersecting_column, 0);
+    return left_intersecting_column;
+}
+
+int findRightIntersectingColumn(double xb){
+    int right_intersecting_column = round((xb - Left_X) / dx);
+    right_intersecting_column = min(right_intersecting_column, Screen_Width - 1);
+    return right_intersecting_column;
+}
+
+vector<double> findX(Triangle *triangle, double y){
+    //ABC triangle
+    //A = triangle->points[0]
+    //B = triangle->points[1]
+    //C = triangle->points[2]
+
+    //intersect with AB
+    // (x - xA)/(xA-xB) = (y - yA)/(yA-yB)
+    double xAB = min((y - triangle->points[0].y) * (triangle->points[0].x - triangle->points[1].x) / (triangle->points[0].y - triangle->points[1].y) + triangle->points[0].x, (double)INF);
+    cout<<"xAB: "<<xAB<<endl;
+    //intersect with AC
+    // (x - xA)/(xA-xC) = (y - yA)/(yA-yC)
+    double xAC = min((y - triangle->points[0].y) * (triangle->points[0].x - triangle->points[2].x) / (triangle->points[0].y - triangle->points[2].y) + triangle->points[0].x, (double)INF);
+    cout<<"xAC: "<<xAC<<endl;
+
+    //intersect with BC
+    // (x - xB)/(xB-xC) = (y - yB)/(yB-yC)
+    double xBC = min((y - triangle->points[1].y) * (triangle->points[1].x - triangle->points[2].x) / (triangle->points[1].y - triangle->points[2].y) + triangle->points[1].x, (double)INF);
+    cout<<"xBC: "<<xBC<<endl;
+    vector<double> x;
+    x.push_back(xAB);
+    x.push_back(xAC);
+    x.push_back(xBC);
+    return x;
+}
+
+vector<double> findZ(Triangle *triangle, double y){
+    //ABC triangle
+    //A = triangle->points[0]
+    //B = triangle->points[1]
+    //C = triangle->points[2.
+    //intersect with AB
+    // (z - zA)/(zA-zB) = (y - yA)/(yA-yB)
+    double zAB = min((y - triangle->points[0].y) * (triangle->points[0].z - triangle->points[1].z) / (triangle->points[0].y - triangle->points[1].y) + triangle->points[0].z, (double)INF);
+    
+    //intersect with AC
+    // (z - zA)/(zA-zC) = (y - yA)/(yA-yC)
+    double zAC = min((y - triangle->points[0].y) * (triangle->points[0].z - triangle->points[2].z) / (triangle->points[0].y - triangle->points[2].y) + triangle->points[0].z, (double)INF);
+
+    //intersect with BC
+    // (z - zB)/(zB-zC) = (y - yB)/(yB-yC)
+    double zBC = min((y - triangle->points[1].y) * (triangle->points[1].z - triangle->points[2].z) / (triangle->points[1].y - triangle->points[2].y) + triangle->points[1].z, (double)INF);
+
+    vector<double> z;
+    z.push_back(zAB);
+    z.push_back(zAC);
+    z.push_back(zBC);
+    return z;
+}
+
+void applyProcedure(ifstream &fin, ofstream &fout){
+    fin.open("stage3.txt");
+    Point *p1, *p2, *p3;
+    p1 = new Point();
+    p2 = new Point();
+    p3 = new Point();
+
+    while(fin >> p1->x >> p1->y >> p1->z >> p2->x >> p2->y >> p2->z >> p3->x >> p3->y >> p3->z){
+        Color rgb = Color(rand()%256, rand()%256, rand()%256);
+        Triangle *triangle = new Triangle(*p1, *p2, *p3, rgb);
+
+        int top_scanline = findTopScanLine(triangle);
+        int bottom_scanline = findBottomScanLine(triangle);
+
+        for(int row_no = top_scanline; row_no <= bottom_scanline; row_no++){
+            cout<<"row_no: "<<row_no<<endl;
+            double y = Top_Y - row_no * dy;
+            vector<double> x = findX(triangle, y);
+            vector<double> z = findZ(triangle, y);
+
+            Point A = triangle->points[0];
+            Point B = triangle->points[1];
+            Point C = triangle->points[2];
+
+            //if intersection point lies between the A and B point
+            bool keep_intersection_0 = (x[0] >= A.x && x[0] <= B.x) || (x[0] >= B.x && x[0] <= A.x);
+
+            //if intersection point lies between the C and A point
+            bool keep_intersection_1 = (x[1] >= A.x && x[1] <= C.x) || (x[1] >= C.x && x[1] <= A.x);
+
+            //if intersection point lies between the B and C point
+            bool keep_intersection_2 = (x[2] >= B.x && x[2] <= C.x) || (x[2] >= C.x && x[2] <= B.x);
+            
+            cout<<"A: "<<A.x<<" "<<A.y<<" "<<A.z<<endl;
+            cout<<"B: "<<B.x<<" "<<B.y<<" "<<B.z<<endl;
+            cout<<"C: "<<C.x<<" "<<C.y<<" "<<C.z<<endl;
+
+            cout<<keep_intersection_0<<" "<<keep_intersection_1<<" "<<keep_intersection_2<<endl;
+
+            double xa = 0, xb = 0, za = 0, zb = 0;
+            if(keep_intersection_0 && keep_intersection_1){
+                if(x[0] < x[1]){
+                    xa = x[0];
+                    xb = x[1];
+                    za = z[0];
+                    zb = z[1];
+                }
+                else{
+                    xa = x[1];
+                    xb = x[0];
+                    za = z[1];
+                    zb = z[0];
+                }
+            }
+            else if(keep_intersection_1 && keep_intersection_2){
+                if(x[1] < x[2]){
+                    xa = x[1];
+                    xb = x[2];
+                    za = z[1];
+                    zb = z[2];
+                }
+                else{
+                    xa = x[2];
+                    xb = x[1];
+                    za = z[2];
+                    zb = z[1];
+                }
+            }
+            else if(keep_intersection_2 && keep_intersection_0){
+                if(x[2] < x[0]){
+                    xa = x[2];
+                    xb = x[0];
+                    za = z[2];
+                    zb = z[0];
+                }
+                else{
+                    xa = x[0];
+                    xb = x[2];
+                    za = z[0];
+                    zb = z[2];
+                }
+            }
+            
+            int left_intersecting_column = findLeftIntersectingColumn(xa);
+            int right_intersecting_column = findRightIntersectingColumn(xb);
+
+            double zp;
+            double constantTerm = (zb - za) / (xb - xa);
+            for(int col_no = left_intersecting_column; col_no <= right_intersecting_column; col_no++){
+                if(col_no == left_intersecting_column){
+                    double temp = (Left_X + col_no * dx - xa) * (zb - za) / (xb - xa); 
+                    zp = za + temp;
+                }else{
+                    zp = zp + dx * constantTerm;
+                }
+
+                //Compare with Z-buffer and z_front_limit and update if required
+                if(zp > frontLimitOfZ && zp < zBuffer[row_no][col_no]){
+                    zBuffer[row_no][col_no] = zp;
+                    frameBuffer[row_no][col_no] = rgb;
+                }
+            }
+        }
+    }
+
+    //saving outputs
+    bitmap_image image(Screen_Width, Screen_Height);
+
+    for(int i = 0; i < Screen_Width; i++){
+        for(int j = 0; j < Screen_Height; j++){
+            image.set_pixel(j, i, frameBuffer[i][j].r, frameBuffer[i][j].g, frameBuffer[i][j].b);
+        }
+    }
+    image.save_image("output.bmp");
+
+    //output z buffer value to a file
+    fout.close();
+    fout.open("z_buffer.txt");
+    for(int i = 0; i < Screen_Width; i++){
+        for(int j = 0; j < Screen_Height; j++){
+            if(zBuffer[i][j] < rearLimitOfZ)
+                fout << fixed <<setprecision(6) << zBuffer[i][j] << "\t";
+        }
+        fout << endl;
+    }
+
+    //freeing memory
+    for(int i = 0; i < Screen_Width; i++){
+        delete[] frameBuffer[i];
+    }
+    delete[] frameBuffer;
+
+    for(int i = 0; i < Screen_Width; i++){
+        delete[] zBuffer[i];
+    }
+    delete[] zBuffer;
+    fout.close();
+}
+
+
+
+void stage4(ifstream &fin, ofstream &fout){
+    fin.open("config.txt");
+    readData(fin);
+    fin.close();
+    dx = (rightLimitOfX - leftLimitOfX) / Screen_Width;
+    dy = (topLimitOfY - bottomLimitOfY) / Screen_Height;
+
+    Top_Y = topLimitOfY - dy/2;
+    Bottom_Y = -topLimitOfY + dy/2;
+
+    Left_X = leftLimitOfX + dx/2;
+    Right_X = leftLimitOfX - dx/2;
+
+    zBuffer = initializeZBuffer();
+    frameBuffer = initializeFrameBuffer();
+
+    applyProcedure(fin, fout);
+}
+
 
 int main(){
     ifstream fin;
@@ -389,6 +720,10 @@ int main(){
     fin.open("stage2.txt");
     fout.open("stage3.txt");
     stage3(fin, fout);
+    fin.close();
+    fout.close();
+
+    stage4(fin, fout);
     fin.close();
     fout.close();
 }
