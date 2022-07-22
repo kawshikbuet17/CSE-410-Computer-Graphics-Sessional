@@ -455,7 +455,6 @@ int findTopScanLine(Triangle *triangle){
     else{
         top_scanline = round((Top_Y - max_y) / dy);
     }
-    cout<<"top_scanline: "<<top_scanline<<endl;
     return top_scanline;
 }
 
@@ -470,7 +469,6 @@ int findBottomScanLine(Triangle *triangle){
     else{
         bottom_scanline = Screen_Height - round((min_y - Bottom_Y) / dy) - 1;
     }
-    cout<<"bottom_scanline: "<<bottom_scanline<<endl;
     return bottom_scanline;
 }
 
@@ -495,16 +493,13 @@ vector<double> findX(Triangle *triangle, double y){
     //intersect with AB
     // (x - xA)/(xA-xB) = (y - yA)/(yA-yB)
     double xAB = min((y - triangle->points[0].y) * (triangle->points[0].x - triangle->points[1].x) / (triangle->points[0].y - triangle->points[1].y) + triangle->points[0].x, (double)INF);
-    cout<<"xAB: "<<xAB<<endl;
     //intersect with AC
     // (x - xA)/(xA-xC) = (y - yA)/(yA-yC)
     double xAC = min((y - triangle->points[0].y) * (triangle->points[0].x - triangle->points[2].x) / (triangle->points[0].y - triangle->points[2].y) + triangle->points[0].x, (double)INF);
-    cout<<"xAC: "<<xAC<<endl;
 
     //intersect with BC
     // (x - xB)/(xB-xC) = (y - yB)/(yB-yC)
     double xBC = min((y - triangle->points[1].y) * (triangle->points[1].x - triangle->points[2].x) / (triangle->points[1].y - triangle->points[2].y) + triangle->points[1].x, (double)INF);
-    cout<<"xBC: "<<xBC<<endl;
     vector<double> x;
     x.push_back(xAB);
     x.push_back(xAC);
@@ -551,7 +546,6 @@ void applyProcedure(ifstream &fin, ofstream &fout){
         int bottom_scanline = findBottomScanLine(triangle);
 
         for(int row_no = top_scanline; row_no <= bottom_scanline; row_no++){
-            cout<<"row_no: "<<row_no<<endl;
             double y = Top_Y - row_no * dy;
             vector<double> x = findX(triangle, y);
             vector<double> z = findZ(triangle, y);
@@ -569,11 +563,6 @@ void applyProcedure(ifstream &fin, ofstream &fout){
             //if intersection point lies between the B and C point
             bool keep_intersection_2 = (x[2] >= B.x && x[2] <= C.x) || (x[2] >= C.x && x[2] <= B.x);
             
-            cout<<"A: "<<A.x<<" "<<A.y<<" "<<A.z<<endl;
-            cout<<"B: "<<B.x<<" "<<B.y<<" "<<B.z<<endl;
-            cout<<"C: "<<C.x<<" "<<C.y<<" "<<C.z<<endl;
-
-            cout<<keep_intersection_0<<" "<<keep_intersection_1<<" "<<keep_intersection_2<<endl;
 
             double xa = 0, xb = 0, za = 0, zb = 0;
             if(keep_intersection_0 && keep_intersection_1){
@@ -640,6 +629,7 @@ void applyProcedure(ifstream &fin, ofstream &fout){
             }
         }
     }
+    fin.close();
 
     //saving outputs
     bitmap_image image(Screen_Width, Screen_Height);
@@ -652,7 +642,6 @@ void applyProcedure(ifstream &fin, ofstream &fout){
     image.save_image("output.bmp");
 
     //output z buffer value to a file
-    fout.close();
     fout.open("z_buffer.txt");
     for(int i = 0; i < Screen_Width; i++){
         for(int j = 0; j < Screen_Height; j++){
@@ -724,6 +713,6 @@ int main(){
     fout.close();
 
     stage4(fin, fout);
-    fin.close();
-    fout.close();
+
+    return 0;
 }
