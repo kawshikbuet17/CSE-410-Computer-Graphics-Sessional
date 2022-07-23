@@ -404,12 +404,12 @@ void stage3(ifstream &fin, ofstream &fout){
 }
 
 double **initializeZBuffer(){
-    double **zBuffer = new double*[Screen_Width];
-    for(int i = 0; i < Screen_Width; i++){
-        zBuffer[i] = new double[Screen_Height];
+    double **zBuffer = new double*[Screen_Height];
+    for(int i = 0; i < Screen_Height; i++){
+        zBuffer[i] = new double[Screen_Width];
     }
-    for(int i = 0; i < Screen_Width; i++){
-        for(int j = 0; j < Screen_Height; j++){
+    for(int i = 0; i < Screen_Height; i++){
+        for(int j = 0; j < Screen_Width; j++){
             zBuffer[i][j] = rearLimitOfZ;
         }
     }
@@ -418,12 +418,12 @@ double **initializeZBuffer(){
 
 
 Color **initializeFrameBuffer(){
-    Color **frameBuffer = new Color*[Screen_Width];
-    for(int i = 0; i < Screen_Width; i++){
-        frameBuffer[i] = new Color[Screen_Height];
+    Color **frameBuffer = new Color*[Screen_Height];
+    for(int i = 0; i < Screen_Height; i++){
+        frameBuffer[i] = new Color[Screen_Width];
     }
-    for(int i = 0; i < Screen_Width; i++){
-        for(int j = 0; j < Screen_Height; j++){
+    for(int i = 0; i < Screen_Height; i++){
+        for(int j = 0; j < Screen_Width; j++){
             frameBuffer[i][j] = Color(0, 0, 0);
         }
     }
@@ -634,8 +634,8 @@ void applyProcedure(ifstream &fin, ofstream &fout){
     //saving outputs
     bitmap_image image(Screen_Width, Screen_Height);
 
-    for(int i = 0; i < Screen_Width; i++){
-        for(int j = 0; j < Screen_Height; j++){
+    for(int i = 0; i < Screen_Height; i++){
+        for(int j = 0; j < Screen_Width; j++){
             image.set_pixel(j, i, frameBuffer[i][j].r, frameBuffer[i][j].g, frameBuffer[i][j].b);
         }
     }
@@ -643,8 +643,8 @@ void applyProcedure(ifstream &fin, ofstream &fout){
 
     //output z buffer value to a file
     fout.open("z_buffer.txt");
-    for(int i = 0; i < Screen_Width; i++){
-        for(int j = 0; j < Screen_Height; j++){
+    for(int i = 0; i < Screen_Height; i++){
+        for(int j = 0; j < Screen_Width; j++){
             if(zBuffer[i][j] < rearLimitOfZ)
                 fout << fixed <<setprecision(6) << zBuffer[i][j] << "\t";
         }
@@ -652,12 +652,12 @@ void applyProcedure(ifstream &fin, ofstream &fout){
     }
 
     //freeing memory
-    for(int i = 0; i < Screen_Width; i++){
+    for(int i = 0; i < Screen_Height; i++){
         delete[] frameBuffer[i];
     }
     delete[] frameBuffer;
 
-    for(int i = 0; i < Screen_Width; i++){
+    for(int i = 0; i < Screen_Height; i++){
         delete[] zBuffer[i];
     }
     delete[] zBuffer;
