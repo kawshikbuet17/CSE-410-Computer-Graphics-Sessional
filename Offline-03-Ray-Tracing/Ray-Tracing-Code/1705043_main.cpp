@@ -386,7 +386,7 @@ void loadData() {
             Vector cubeReferencePoint;
             double length, width, height;
 
-            fin >> coefficient;
+            fin >> coefficient.a >> coefficient.b >> coefficient.c >> coefficient.d >> coefficient.e >> coefficient.f >> coefficient.g >> coefficient.h >> coefficient.i >> coefficient.j;
             fin >> cubeReferencePoint.x >> cubeReferencePoint.y >> cubeReferencePoint.z;
             fin >> length >> width >> height;
 

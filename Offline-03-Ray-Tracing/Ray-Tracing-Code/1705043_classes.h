@@ -349,7 +349,9 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
     Color intersectionPointColor = getColor();
 
     //ambient component of reflected ray
-    computeAmbientLightComponent(color, intersectionPointColor);
+    color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
+    color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
+    color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
 
     //calculate normal at intersectionPoint
     Vector normal = intersectionPoint-center;
@@ -365,9 +367,8 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
         //cast rayl from pl.light_pos to intersectionPoint
         Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
-        // if intersectionPoint is in shadow, the diffuse
-        // and specular components need not be calculated
-        double t, tMinimum=INF;
+
+        double t, tMinimum = INF;
 
         for(int j=0; j<objects.size(); j++) {
             Color dummyColor;  // color = black
@@ -381,58 +382,68 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
         Vector shadowIntersectionPoint = incidentRay.R0 + incidentRay.Rd*tMinimum;
         double epsilon = 0.0000001;  // for tuning light effect
 
+        // if intersectionPoint is in shadow, the diffuse
+        // and specular components need not be calculated
         if(intersectionPoint.computeDistanceBetween(incidentRay.R0)-epsilon > shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
-            /* intersection point is, indeed, in shadow */
             continue;
         }
 
-        /* computing diffuse & specular components of reflected ray */
-        computeReflectionComponents(ray, color, intersectionPoint, intersectionPointColor, normal, lights[i], incidentRay);
+        //calculate lambertValue using normal, rayl
+        //find reflected ray, rayr for rayl
+        //calculate phongValue using r, rayr
+        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
+        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
     }
 
-    /* handling recursive reflection */
+    //if level ≥ recursion_level, return tmin
     if(level >= levelOfRecursion) {
         return tMin;
     }
 
-    /* incorporating concept of evil epsilon to recursive reflection computation */
-    Vector reflectionDirection = ray.Rd-normal*((ray.Rd/normal)*2.0);
+    //construct reflected ray from intersection point
+    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd,normal)*2.0);
     reflectionDirection.normalize();
     Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
 
-    /* finding nearest intersecting object (if available) */
-    int nearest = INT_MAX;
+    //find tmin from the nearest intersecting object, using
+    //intersect() method, as done in the capture() method
+    //if found, call intersect(rreflected, colorreflected, level+1)
+    int nearest = INF;
     double t, tMinimum=INF;
 
     for(int i=0; i<objects.size(); i++) {
         Color dummyColor;  // color = black
         t = objects[i]->intersect(reflectedRay, dummyColor, 0);
 
-        if(t>0.0 && t<tMinimum) {
+        if(t>0.0 and t<tMinimum) {
             tMinimum = t;
             nearest = i;
         }
     }
 
-    /* finding color component for reflected ray */
-    Color reflectedColor;  // color = black
-
-    if(nearest != INT_MAX) {
+    // colorreflected will be updated while in the subsequent call
+    // update color using the impact of reflection
+    Color reflectedColor;
+    if(nearest != INF) {
         tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
     }
 
-    /* computing recursive reflection component of reflected ray */
-    computeRecursiveReflectionComponent(color, reflectedColor);
-
-    /* clipping the color values (if necessary) */
-    color.red = (color.red > 1.0)? 1.0: ((color.red < 0.0)? 0.0: color.red);
-    color.green = (color.green > 1.0)? 1.0: ((color.green < 0.0)? 0.0: color.green);
-    color.blue = (color.blue > 1.0)? 1.0: ((color.blue < 0.0)? 0.0: color.blue);
-
+    color.red += reflectedColor.red*reflectionCoefficient.recursive;
+    color.green += reflectedColor.green*reflectionCoefficient.recursive;
+    color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
     return tMin;
 }
 
-/* Triangle class */
+
 class Triangle: public Object {
     Vector a;
     Vector b;
@@ -451,16 +462,10 @@ public:
 
     void draw();
     double intersect(Ray, Color&, int);
-
-    ~Triangle() {
-        /* destructor */
-    }
 };
 
 void Triangle::draw() {
-    /* a, b, c - coordinates/position vectors of three corners of the triangle */
     glColor3f(getColor().red, getColor().green, getColor().blue);
-
     glBegin(GL_TRIANGLES);
     {
         glVertex3f(a.x, a.y, a.z);
@@ -471,36 +476,38 @@ void Triangle::draw() {
 }
 
 double Triangle::intersect(Ray ray, Color& color, int level) {
-    /* finding intersecting tMin */
-    double determinantBase, determinantBeta, determinantGamma, determinantT, tMin;
+    double detA, detBeta, detGhama, detT, tMin;
+    double R0x, R0y, R0z;
+    double Rdx, Rdy, Rdz;
+    R0x = ray.R0.x;
+    R0y = ray.R0.y;
+    R0z = ray.R0.z;
+    Rdx = ray.Rd.x;
+    Rdy = ray.Rd.y;
+    Rdz = ray.Rd.z;
+    detA = (a.x - b.x) * ((a.y - c.y) * Rdz - (a.z - c.z) * Rdy)
+        +(a.x - c.x) * ((a.z - b.z) * Rdy - (a.y - b.y) * Rdz)
+        +Rdx * ((a.y - b.y) * (a.z - c.z) - (a.z - b.z) * (a.y - c.y));
 
-    determinantBase = (a.x-b.x)*((a.y-c.y)*ray.Rd.z-(a.z-c.z)*ray.Rd.y);
-    determinantBase += (a.x-c.x)*((a.z-b.z)*ray.Rd.y-(a.y-b.y)*ray.Rd.z);
-    determinantBase += ray.Rd.x*((a.y-b.y)*(a.z-c.z)-(a.z-b.z)*(a.y-c.y));
+    detBeta = (a.x - R0x) * ((a.y - c.y) * Rdz - (a.z - c.z) * Rdy)
+            +(a.x - c.x) * ((a.z - R0z) * Rdy - (a.y - R0y) * Rdz)
+            +Rdx * ((a.y - R0y) * (a.z - c.z) - (a.z - R0z) * (a.y - c.y));
 
-    determinantBeta = (a.x-ray.R0.x)*((a.y-c.y)*ray.Rd.z-(a.z-c.z)*ray.Rd.y);
-    determinantBeta += (a.x-c.x)*((a.z-ray.R0.z)*ray.Rd.y-(a.y-ray.R0.y)*ray.Rd.z);
-    determinantBeta += ray.Rd.x*((a.y-ray.R0.y)*(a.z-c.z)-(a.z-ray.R0.z)*(a.y-c.y));
+    detGhama = (a.x - b.x) * ((a.y - R0y) * Rdz - (a.z - R0z) * Rdy)
+            +(a.x - R0x) * ((a.z - b.z) * Rdy - (a.y - b.y) * Rdz)
+            +Rdx * ((a.y - b.y) * (a.z - R0z) - (a.z - b.z) * (a.y - R0y));
 
-    determinantGamma = (a.x-b.x)*((a.y-ray.R0.y)*ray.Rd.z-(a.z-ray.R0.z)*ray.Rd.y);
-    determinantGamma += (a.x-ray.R0.x)*((a.z-b.z)*ray.Rd.y-(a.y-b.y)*ray.Rd.z);
-    determinantGamma += ray.Rd.x*((a.y-b.y)*(a.z-ray.R0.z)-(a.z-b.z)*(a.y-ray.R0.y));
+    detT = (a.x - b.x) * ((a.y - c.y) * (a.z - R0z) - (a.z - c.z) * (a.y - R0y))
+        +(a.x - c.x) * ((a.z - b.z) * (a.y - R0y) - (a.y - b.y) * (a.z - R0z))
+        +(a.x - R0x) * ((a.y - b.y) * (a.z - c.z) - (a.z - b.z) * (a.y - c.y));
 
-    determinantT = (a.x-b.x)*((a.y-c.y)*(a.z-ray.R0.z)-(a.z-c.z)*(a.y-ray.R0.y));
-    determinantT += (a.x-c.x)*((a.z-b.z)*(a.y-ray.R0.y)-(a.y-b.y)*(a.z-ray.R0.z));
-    determinantT += (a.x-ray.R0.x)*((a.y-b.y)*(a.z-c.z)-(a.z-b.z)*(a.y-c.y));
-
-    if(determinantBase == 0.0) {
-        /* ray will not intersect the triangle plane */
-        tMin = INF;
-    } else {
-        /* ray will intersect the triangle plane */
-        if(determinantBeta/determinantBase>0.0 && determinantGamma/determinantBase>0.0 && determinantBeta/determinantBase+determinantGamma/determinantBase<1.0) {
-            /* intersection point lies within the boundary of the triangle */
-            tMin = determinantT/determinantBase;
-        } else {
-            /* intersection point does not lie within the boundary of the triangle */
-            tMin = INF;
+    tMin = INF;
+    if(detA != 0.0) {
+        double beta = detBeta / detA;
+        double ghama = detGhama / detA;
+        double t = detT / detA;
+        if(beta + ghama < 1.0 and beta > 0.0 && ghama > 0.0) {
+            tMin = t;
         }
     }
 
@@ -508,23 +515,29 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
         return tMin;
     }
 
-    /* illuminating with Phong Lighting Model */
-    Vector intersectionPoint = ray.R0+ray.Rd*tMin;
+    //Illumination with the Phong Lighting Model
+    Vector intersectionPoint = ray.R0 + ray.Rd * tMin;
     Color intersectionPointColor = getColor();
 
-    /* determining unit normal vector on appropriate side of triangle */
+    //ambient component of reflected ray
+    color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
+    color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
+    color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
+
+    //calculate normal
     Vector normal = (b-a)%(c-a);
     normal.normalize();
-    normal = ((ray.Rd*(-1.0))/normal > 0.0)? normal: normal*(-1.0);
+    if(DOT(ray.Rd, normal) > 0.0){
+        normal.x = -normal.x;
+        normal.y = -normal.y;
+        normal.z = -normal.z;
+    }
 
-    /* computing ambient light component of reflected ray */
-    computeAmbientLightComponent(color, intersectionPointColor);
-
-    /* computing diffuse & specular reflection components of reflected ray */
+    //for each point light pl in pointLights
     for(int i=0; i<lights.size(); i++) {
+        //cast rayl from pl.light_pos to intersectionPoint
         Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
-        /* checking if intersection point is in shadow */
         double t, tMinimum=INF;
 
         for(int j=0; j<objects.size(); j++) {
@@ -537,29 +550,43 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
         }
 
         Vector shadowIntersectionPoint = incidentRay.R0+incidentRay.Rd*tMinimum;
-        double epsilon = 0.0000001;  // for tuning light effect
 
-        if(intersectionPoint.computeDistanceBetween(incidentRay.R0)-epsilon > shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
-            /* intersection point is, indeed, in shadow */
+        // if intersectionPoint is in shadow, the diffuse
+        // and specular components need not be calculated
+        if(intersectionPoint.computeDistanceBetween(incidentRay.R0)> shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
             continue;
         }
 
-        /* computing diffuse & specular components of reflected ray */
-        computeReflectionComponents(ray, color, intersectionPoint, intersectionPointColor, normal, lights[i], incidentRay);
+        //calculate lambertValue using normal, rayl
+        //find reflected ray, rayr for rayl
+        //calculate phongValue using r, rayr
+        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
+        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
     }
 
-    /* handling recursive reflection */
+    //if level ≥ recursion_level, return tmin
     if(level >= levelOfRecursion) {
         return tMin;
     }
 
-    /* incorporating concept of evil epsilon to recursive reflection computation */
+    //construct reflected ray from intersection point
     Vector reflectionDirection = ray.Rd-normal*((ray.Rd/normal)*2.0);
     reflectionDirection.normalize();
     Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
 
-    /* finding nearest intersecting object (if available) */
-    int nearest = INT_MAX;
+    //find tmin from the nearest intersecting object, using
+    //intersect() method, as done in the capture() method
+    //if found, call intersect(rreflected, colorreflected, level+1)
+    int nearest = INF;
     double t, tMinimum=INF;
 
     for(int i=0; i<objects.size(); i++) {
@@ -572,48 +599,26 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
         }
     }
 
-    /* finding color component for reflected ray */
+    // colorreflected will be updated while in the subsequent call
+    // update color using the impact of reflection
     Color reflectedColor;  // color = black
 
-    if(nearest != INT_MAX) {
+    if(nearest != INF) {
         tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
     }
 
-    /* computing recursive reflection component of reflected ray */
-    computeRecursiveReflectionComponent(color, reflectedColor);
-
-    /* clipping the color values (if necessary) */
-    color.red = (color.red > 1.0)? 1.0: ((color.red < 0.0)? 0.0: color.red);
-    color.green = (color.green > 1.0)? 1.0: ((color.green < 0.0)? 0.0: color.green);
-    color.blue = (color.blue > 1.0)? 1.0: ((color.blue < 0.0)? 0.0: color.blue);
+    color.red += reflectedColor.red*reflectionCoefficient.recursive;
+    color.green += reflectedColor.green*reflectionCoefficient.recursive;
+    color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
 
     return tMin;
 }
 
-/* GeneralQuadricSurfaceCoefficient structure */
-struct GeneralQuadricSurfaceCoefficient {
+class GeneralQuadricSurfaceCoefficient {
+public:
     double a, b, c, d, e, f, g, h, i, j;
-
-    friend ifstream& operator>>(ifstream&, GeneralQuadricSurfaceCoefficient&);
-    friend ostream& operator<<(ostream&, GeneralQuadricSurfaceCoefficient&);
 };
 
-ifstream& operator>>(ifstream &input, GeneralQuadricSurfaceCoefficient &coefficient) {
-    input >> coefficient.a >> coefficient.b >> coefficient.c >> coefficient.d >> coefficient.e;
-    input >> coefficient.f >> coefficient.g >> coefficient.h >> coefficient.i >> coefficient.j;
-    return input;
-}
-
-ostream& operator<<(ostream &output, GeneralQuadricSurfaceCoefficient &coefficient) {
-    output << '[' << coefficient.a << ", " << coefficient.b << ", ";
-    output << coefficient.c << ", " << coefficient.d << ", ";
-    output << coefficient.e << ", " << coefficient.f << ", ";
-    output << coefficient.g << ", " << coefficient.h << ", ";
-    output << coefficient.i << ", " << coefficient.j << ']';
-    return output;
-}
-
-/* GeneralQuadricSurface class */
 class GeneralQuadricSurface: public Object {
     GeneralQuadricSurfaceCoefficient coefficient;
     Vector cubeReferencePoint;
@@ -641,15 +646,9 @@ public:
     }
 
     double intersect(Ray, Color&, int);
-
-    ~GeneralQuadricSurface() {
-        /* destructor */
-    }
 };
 
 double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
-    /* finding intersecting tMin */
-    /* reference: http://skuld.bmsc.washington.edu/people/merritt/graphics/quadrics.html */
     double a, b, c, tMin, tMax;
 
     a = coefficient.a*ray.Rd.x*ray.Rd.x+coefficient.b*ray.Rd.y*ray.Rd.y+coefficient.c*ray.Rd.z*ray.Rd.z;
@@ -731,12 +730,14 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     zNormal = 2.0*coefficient.c*intersectionPoint.z+coefficient.e*intersectionPoint.x;
     zNormal += coefficient.f*intersectionPoint.y+coefficient.i;
 
+    //ambient component
+    color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
+    color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
+    color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
+
     Vector normal(xNormal, yNormal, zNormal);
     normal.normalize();
     normal = ((ray.Rd*(-1.0))/normal > 0.0)? normal: normal*(-1.0);
-
-    /* computing ambient light component of reflected ray */
-    computeAmbientLightComponent(color, intersectionPointColor);
 
     /* computing diffuse & specular reflection components of reflected ray */
     for(int i=0; i<lights.size(); i++) {
@@ -763,7 +764,17 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
         }
 
         /* computing diffuse & specular components of reflected ray */
-        computeReflectionComponents(ray, color, intersectionPoint, intersectionPointColor, normal, lights[i], incidentRay);
+        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
+        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+        color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
+        color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
     }
 
     /* handling recursive reflection */
@@ -798,22 +809,17 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     }
 
     /* computing recursive reflection component of reflected ray */
-    computeRecursiveReflectionComponent(color, reflectedColor);
-
-    /* clipping the color values (if necessary) */
-    color.red = (color.red > 1.0)? 1.0: ((color.red < 0.0)? 0.0: color.red);
-    color.green = (color.green > 1.0)? 1.0: ((color.green < 0.0)? 0.0: color.green);
-    color.blue = (color.blue > 1.0)? 1.0: ((color.blue < 0.0)? 0.0: color.blue);
+    color.red += reflectedColor.red*reflectionCoefficient.recursive;
+    color.green += reflectedColor.green*reflectionCoefficient.recursive;
+    color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
 
     return tMin;
 }
 
-/* Floor class */
 class Floor: public Object {
     double floorWidth;
     double tileWidth;
 
-    /* considering color from base class Object as background color */
     Color foregroundColor;
 
 public:
@@ -829,10 +835,6 @@ public:
 
     void draw();
     double intersect(Ray, Color&, int);
-
-    ~Floor() {
-        /* destructor */
-    }
 };
 
 void Floor::draw() {
@@ -855,28 +857,16 @@ void Floor::draw() {
 }
 
 double Floor::intersect(Ray ray, Color& color, int level) {
-    /* determining unit normal vector on appropriate side of floor */
+    //Normal = (0,0,1)
     Vector normal(0.0, 0.0, 1.0);
-    normal = (pos / normal > 0.0) ? normal : normal * (-1.0);
 
-    /* finding intersecting tMin */
+    //t = -(D + n·Ro) / n·Rd
     double tMin = INF;
-
-    if(normal/ray.Rd != 0.0) {
-        tMin = (-1.0)*(normal/ray.R0)/(normal/ray.Rd);
-    }
-
-    if(tMin>0.0 && tMin<INF) {
-        /*
-            ray intersects the floor plane and is in front of the camera,
-                but we need to make sure the intersection point is on the floor
-        */
-        Vector intersectionPoint = ray.R0+ray.Rd*tMin;
-
-        if(!((intersectionPoint.x>-floorWidth/2.0 && intersectionPoint.x<floorWidth/2.0) && (intersectionPoint.y>-floorWidth/2.0 && intersectionPoint.y<floorWidth/2.0))) {
-            /* intersection point is not on the floor */
-            tMin = INF;
-        }
+    double D = 0;
+    double nR0 = DOT(normal, ray.R0);
+    double nRd = DOT(normal, ray.Rd);
+    if(nRd != 0.0) {
+        tMin = -(D + nR0) / nRd;
     }
 
     if(level == 0) {
@@ -886,18 +876,23 @@ double Floor::intersect(Ray ray, Color& color, int level) {
     /* illuminating with Phong Lighting Model */
     Vector intersectionPoint = ray.R0+ray.Rd*tMin;
     Vector referencePosition = intersectionPoint-Vector(-floorWidth/2.0, -floorWidth/2.0, 0.0);
-    Color intersectionPointColor = (((int) (floor(referencePosition.x/tileWidth)+floor(referencePosition.y/tileWidth)))%2 == 0)? getColor(): foregroundColor;
+    Color intersectionPointColor;
+    if(((int) (floor(referencePosition.x/tileWidth)+floor(referencePosition.y/tileWidth)))%2 == 0){
+        intersectionPointColor = getColor();
+    }
+    else{
+        intersectionPointColor = foregroundColor;
+    }
 
-    /* computing ambient light component of reflected ray */
-    computeAmbientLightComponent(color, intersectionPointColor);
+    //ambient component
+    color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
+    color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
+    color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
 
-    /* computing diffuse & specular reflection components of reflected ray */
     for(int i=0; i<lights.size(); i++) {
         Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
-        /* checking if intersection point is in shadow */
         double t, tMinimum=INF;
-
         for(int j=0; j<objects.size(); j++) {
             Color dummyColor;  // color = black
             t = objects[j]->intersect(incidentRay, dummyColor, 0);
@@ -908,55 +903,54 @@ double Floor::intersect(Ray ray, Color& color, int level) {
         }
 
         Vector shadowIntersectionPoint = incidentRay.R0+incidentRay.Rd*tMinimum;
-        double epsilon = 0.0000001;  // for tuning light effect
 
-        if(intersectionPoint.computeDistanceBetween(incidentRay.R0)-epsilon > shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
-            /* intersection point is, indeed, in shadow */
+        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
             continue;
         }
 
-        /* computing diffuse & specular components of reflected ray */
-        computeReflectionComponents(ray, color, intersectionPoint, intersectionPointColor, normal, lights[i], incidentRay);
+        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
+        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+        color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
+        color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
     }
 
-    /* handling recursive reflection */
     if(level >= levelOfRecursion) {
         return tMin;
     }
 
-    /* incorporating concept of evil epsilon to recursive reflection computation */
     Vector reflectionDirection = ray.Rd-normal*((ray.Rd/normal)*2.0);
     reflectionDirection.normalize();
     Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
 
-    /* finding nearest intersecting object (if available) */
-    int nearest = INT_MAX;
+    int nearest = INF;
     double t, tMinimum=INF;
 
     for(int i=0; i<objects.size(); i++) {
-        Color dummyColor;  // color = black
+        Color dummyColor;
         t = objects[i]->intersect(reflectedRay, dummyColor, 0);
 
-        if(t>0.0 && t<tMinimum) {
+        if(t>0.0 and t<tMinimum) {
             tMinimum = t;
             nearest = i;
         }
     }
 
-    /* finding color component for reflected ray */
-    Color reflectedColor;  // color = black
+    Color reflectedColor;
 
-    if(nearest != INT_MAX) {
+    if(nearest != INF) {
         tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
     }
 
-    /* computing recursive reflection component of reflected ray */
-    computeRecursiveReflectionComponent(color, reflectedColor);
-
-    /* clipping the color values (if necessary) */
-    color.red = (color.red > 1.0)? 1.0: ((color.red < 0.0)? 0.0: color.red);
-    color.green = (color.green > 1.0)? 1.0: ((color.green < 0.0)? 0.0: color.green);
-    color.blue = (color.blue > 1.0)? 1.0: ((color.blue < 0.0)? 0.0: color.blue);
+    color.red += reflectedColor.red*reflectionCoefficient.recursive;
+    color.green += reflectedColor.green*reflectionCoefficient.recursive;
+    color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
 
     return tMin;
 }
