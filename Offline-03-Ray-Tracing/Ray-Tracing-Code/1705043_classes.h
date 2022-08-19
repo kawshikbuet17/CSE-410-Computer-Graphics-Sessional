@@ -98,11 +98,11 @@ public:
         this->stacks = stacks;
     }
 
-    Vector getPosition() const {
+    Vector getPosition(){
         return position;
     }
 
-    Color getColor() const {
+    Color getColor(){
         return color;
     }
 
@@ -173,7 +173,7 @@ public:
         shine = 0;
     }
 
-    Color getColor() const {
+    Color getColor(){
         return color;
     }
 
@@ -220,15 +220,15 @@ public:
 
 void Sphere::draw() {
     Vector points[stacks+1][segments+1];
-    double height, _radius;
+    double height, r;
 
     /* generating points: segments = segments in plane; stacks = segments in hemisphere */
 	for(int i=0; i<=stacks; i++) {
 		height = radius*sin(((double)i/(double)stacks)*(PI/2));
-		_radius = radius*cos(((double)i/(double)stacks)*(PI/2));
+        r = radius * cos(((double)i / (double)stacks) * (PI / 2));
 
 		for(int j=0; j<=segments; j++) {
-            points[i][j] = Vector(_radius*cos(((double)j/(double)segments)*2*PI), _radius*sin(((double)j/(double)segments)*2*PI), height);
+            points[i][j] = Vector(r * cos(((double)j / (double)segments) * 2 * PI), r * sin(((double)j / (double)segments) * 2 * PI), height);
 		}
 	}
 
