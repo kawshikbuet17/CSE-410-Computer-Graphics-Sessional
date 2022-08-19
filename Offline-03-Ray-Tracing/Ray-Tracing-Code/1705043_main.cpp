@@ -10,6 +10,7 @@ int drawaxes;
 int pixelsAlongBothDimensions = 0;
 int noOfObjects = 0;
 int noOfPointLights = 0;
+int noOfSpotLights = 0;
 int bitmapImageCount;
 
 void init_pos_u_r_l(){
@@ -413,7 +414,6 @@ void loadData() {
     temp = NULL;
 
     fin >> noOfPointLights;
-
     for(int i=0; i < noOfPointLights; i++) {
         Vector position;
         Color color;
@@ -422,6 +422,18 @@ void loadData() {
         fin >> color.red >> color.green >> color.blue;
 
         lights.push_back(PointLight(position, color, 1.0));
+    }
+    fin >> noOfSpotLights;
+    for(int i=0; i < noOfSpotLights; i++) {
+        Vector position;
+        Color color;
+        Vector direction;
+
+        fin >> position.x >> position.y >> position.z;
+        fin >> color.red >> color.green >> color.blue;
+        fin >> direction.x >> direction.y >> direction.z;
+
+        spotlights.push_back(SpotLight(position, color, direction, 1.0));
     }
     fin.close();
 
