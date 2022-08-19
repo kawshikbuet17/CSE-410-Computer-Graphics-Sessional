@@ -1,7 +1,7 @@
 #include<windows.h>
 #include<GL/glut.h>
 #include "bitmap_image.hpp"
-#include "1705043_classes.h"
+#include "1705043_Header.h"
 
 int windowWidth = 500;
 int windowHeight = 500;
