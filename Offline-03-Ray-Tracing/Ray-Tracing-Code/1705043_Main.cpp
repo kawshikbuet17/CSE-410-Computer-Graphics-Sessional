@@ -31,15 +31,15 @@ void init_pos_u_r_l(){
     l.z = 0;
 }
 
-Vector crossProduct(Vector a, Vector b){
-    Vector result;
+Vector3D crossProduct(Vector3D a, Vector3D b){
+    Vector3D result;
     result.x = a.y*b.z - b.y*a.z;
     result.y = a.z*b.x - b.z*a.x;
     result.z = a.x*b.y - b.x*a.y;
     return result;
 }
 
-Vector normalize(Vector v){
+Vector3D normalize(Vector3D v){
     double len = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
     v.x /= len;
     v.y /= len;
@@ -47,9 +47,9 @@ Vector normalize(Vector v){
     return v;
 }
 
-Vector rotateVector(Vector v, Vector reference, double rotationAngle){
-    Vector result;
-    Vector vperp;
+Vector3D rotateVector(Vector3D v, Vector3D reference, double rotationAngle){
+    Vector3D result;
+    Vector3D vperp;
     vperp = crossProduct(reference, v);
     result.x = v.x * cos(rotationAngle*PI/180) + vperp.x * sin(rotationAngle*PI/180);
     result.y = v.y * cos(rotationAngle*PI/180) + vperp.y * sin(rotationAngle*PI/180);
@@ -91,7 +91,7 @@ void capture() {
     }
 
     double planeDistance = windowHeight/(2.0*tan(viewAngle / 2.0 * PI / 180.0));
-    Vector topLeft = pos + l * planeDistance - r * (windowWidth / 2.0) + u * (windowHeight / 2.0);
+    Vector3D topLeft = pos + l * planeDistance - r * (windowWidth / 2.0) + u * (windowHeight / 2.0);
 
     double du = ((double) windowWidth/imageWidth);
     double dv = ((double) windowHeight/imageHeight);
@@ -102,7 +102,7 @@ void capture() {
     for(int column=0; column<imageWidth; column++) {
         for(int row=0; row<imageHeight; row++) {
             //calculate curPixel using topleft,r,u,i,j,du,dv
-            Vector curPixel = topLeft + r * (column * du) - u * (row * dv);
+            Vector3D curPixel = topLeft + r * (column * du) - u * (row * dv);
 
             //cast ray from eye to (curPixel-eye) direction
             Ray* ray = new Ray(pos, curPixel-pos);
@@ -368,7 +368,7 @@ void loadData() {
     for(int i=0; i < noOfObjects; i++) {
         fin >> type;
         if(type == "sphere") {
-            Vector center;
+            Vector3D center;
             double radius;
 
             fin >> center.x >> center.y >> center.z;
@@ -377,7 +377,7 @@ void loadData() {
             temp = new Sphere(center, radius);
         }
         else if(type == "triangle") {
-            Vector a, b, c;
+            Vector3D a, b, c;
 
             fin >> a.x >> a.y >> a.z;
             fin >> b.x >> b.y >> b.z;
@@ -387,7 +387,7 @@ void loadData() {
         }
         else if(type == "general") {
             GeneralQuadricSurfaceCoefficient coefficient;
-            Vector cubeReferencePoint;
+            Vector3D cubeReferencePoint;
             double length, width, height;
 
             fin >> coefficient.a >> coefficient.b >> coefficient.c >> coefficient.d >> coefficient.e >> coefficient.f >> coefficient.g >> coefficient.h >> coefficient.i >> coefficient.j;
@@ -418,7 +418,7 @@ void loadData() {
 
     fin >> noOfPointLights;
     for(int i=0; i < noOfPointLights; i++) {
-        Vector position;
+        Vector3D position;
         Color color;
 
         fin >> position.x >> position.y >> position.z;
@@ -428,9 +428,9 @@ void loadData() {
     }
     fin >> noOfSpotLights;
     for(int i=0; i < noOfSpotLights; i++) {
-        Vector position;
+        Vector3D position;
         Color color;
-        Vector direction;
+        Vector3D direction;
         double cutoffAngle;
 
         fin >> position.x >> position.y >> position.z;
