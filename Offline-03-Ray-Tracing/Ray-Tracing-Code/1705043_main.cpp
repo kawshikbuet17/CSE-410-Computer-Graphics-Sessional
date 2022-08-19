@@ -104,7 +104,7 @@ void capture() {
             Vector curPixel = topLeft + r * (column * du) - u * (row * dv);
 
             //cast ray from eye to (curPixel-eye) direction
-            Ray ray(pos, curPixel-pos);
+            Ray* ray = new Ray(pos, curPixel-pos);
 
             int nearest = INF;
             double t, tMin=INF;

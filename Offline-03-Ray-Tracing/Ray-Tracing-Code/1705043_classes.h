@@ -78,13 +78,13 @@ public:
 };
 
 class PointLight {
+public:
     Vector position;
     Color color;
     double radius;
     int segments;
     int stacks;
 
-public:
     PointLight() {
         radius = 0.0;
         segments = stacks = 0;
@@ -93,7 +93,6 @@ public:
     PointLight(Vector position, Color color, double radius, int segments = 30, int stacks = 30) {
         this->position = position;
         this->color = color;
-
         this->radius = radius;
         this->segments = segments;
         this->stacks = stacks;
@@ -112,15 +111,15 @@ public:
 
 void PointLight::draw() {
     Vector points[stacks+1][segments+1];
-    double height, _radius;
+    double height, r;
 
     /* generating points: segments = segments in plane; stacks = segments in hemisphere */
 	for(int i=0; i<=stacks; i++) {
 		height = radius*sin(((double)i/(double)stacks)*(PI/2));
-		_radius = radius*cos(((double)i/(double)stacks)*(PI/2));
+        r = radius * cos(((double)i / (double)stacks) * (PI / 2));
 
 		for(int j=0; j<=segments; j++) {
-            points[i][j] = Vector(_radius*cos(((double)j/(double)segments)*2*PI), _radius*sin(((double)j/(double)segments)*2*PI), height);
+            points[i][j] = Vector(r * cos(((double)j / (double)segments) * 2 * PI), r * sin(((double)j / (double)segments) * 2 * PI), height);
 		}
 	}
 
@@ -190,7 +189,7 @@ public:
         this->shine = shine;
     }
     virtual void draw() = 0;
-    virtual double intersect(Ray, Color&, int) = 0;
+    virtual double intersect(Ray*, Color&, int) = 0;
 };
 
 Vector pos, u, r, l;
@@ -216,7 +215,7 @@ public:
     }
 
     void draw();
-    double intersect(Ray, Color&, int);
+    double intersect(Ray*, Color&, int);
 };
 
 void Sphere::draw() {
@@ -257,13 +256,13 @@ void Sphere::draw() {
 	}
 }
 
-double Sphere::intersect(Ray ray, Color& color, int level) {
+double Sphere::intersect(Ray* ray, Color& color, int level) {
     //find intersect value t minimum of at^2+bt+c=0
     double a, b, c, tMin;
 
-    a = DOT(ray.Rd, ray.Rd);
-    b = 2.0 * (DOT(ray.R0, ray.Rd) - DOT(ray.Rd, center));
-    c = DOT(ray.R0, ray.R0) + DOT(center, center) - DOT(ray.R0, center) * 2.0 - radius * radius;
+    a = DOT(ray->Rd, ray->Rd);
+    b = 2.0 * (DOT(ray->R0, ray->Rd) - DOT(ray->Rd, center));
+    c = DOT(ray->R0, ray->R0) + DOT(center, center) - DOT(ray->R0, center) * 2.0 - radius * radius;
 
     double discriminant = b * b - 4.0 * a * c;
 
@@ -281,7 +280,7 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
     }
 
     //Illumination with the Phong Lighting Model
-    Vector intersectionPoint = ray.R0 + ray.Rd * tMin;
+    Vector intersectionPoint = ray->R0 + ray->Rd * tMin;
     Color intersectionPointColor = getColor();
 
     //ambient component of reflected ray
@@ -301,7 +300,7 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
     //for each point light pl in pointLights
     for(int i=0; i<lights.size(); i++) {
         //cast rayl from pl.light_pos to intersectionPoint
-        Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
+        Ray* incidentRay = new Ray(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
 
         double t, tMinimum = INF;
@@ -315,21 +314,21 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
             }
         }
 
-        Vector shadowIntersectionPoint = incidentRay.R0 + incidentRay.Rd*tMinimum;
+        Vector shadowIntersectionPoint = incidentRay->R0 + incidentRay->Rd*tMinimum;
         double epsilon = 0.0000001;  // for tuning light effect
 
         // if intersectionPoint is in shadow, the diffuse
         // and specular components need not be calculated
-        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
+        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
             continue;
         }
 
         //calculate lambertValue using normal, rayl
         //find reflected ray, rayr for rayl
         //calculate phongValue using r, rayr
-        double lambertValue = DOT((incidentRay.Rd*(-1.0)),normal);
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
-        double phongValue = DOT((ray.Rd*(-1.0)),reflectedRay.Rd);
+        double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+        Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+        double phongValue = DOT((ray->Rd*(-1.0)),reflectedRay->Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
@@ -346,9 +345,9 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
     }
 
     //construct reflected ray from intersection point
-    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd,normal)*2.0);
+    Vector reflectionDirection = ray->Rd-normal*(DOT(ray->Rd,normal)*2.0);
     reflectionDirection.normalize();
-    Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
+    Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
 
     //find tmin from the nearest intersecting object, using
     //intersect() method, as done in the capture() method
@@ -393,7 +392,7 @@ public:
     }
 
     void draw();
-    double intersect(Ray, Color&, int);
+    double intersect(Ray*, Color&, int);
 };
 
 void Triangle::draw() {
@@ -407,16 +406,16 @@ void Triangle::draw() {
     glEnd();
 }
 
-double Triangle::intersect(Ray ray, Color& color, int level) {
+double Triangle::intersect(Ray* ray, Color& color, int level) {
     double detA, detBeta, detGhama, detT, tMin;
     double R0x, R0y, R0z;
     double Rdx, Rdy, Rdz;
-    R0x = ray.R0.x;
-    R0y = ray.R0.y;
-    R0z = ray.R0.z;
-    Rdx = ray.Rd.x;
-    Rdy = ray.Rd.y;
-    Rdz = ray.Rd.z;
+    R0x = ray->R0.x;
+    R0y = ray->R0.y;
+    R0z = ray->R0.z;
+    Rdx = ray->Rd.x;
+    Rdy = ray->Rd.y;
+    Rdz = ray->Rd.z;
     detA = (a.x - b.x) * ((a.y - c.y) * Rdz - (a.z - c.z) * Rdy)
         +(a.x - c.x) * ((a.z - b.z) * Rdy - (a.y - b.y) * Rdz)
         +Rdx * ((a.y - b.y) * (a.z - c.z) - (a.z - b.z) * (a.y - c.y));
@@ -448,7 +447,7 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
     }
 
     //Illumination with the Phong Lighting Model
-    Vector intersectionPoint = ray.R0 + ray.Rd * tMin;
+    Vector intersectionPoint = ray->R0 + ray->Rd * tMin;
     Color intersectionPointColor = getColor();
 
     //ambient component of reflected ray
@@ -459,7 +458,7 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
     //calculate normal
     Vector normal = CROSS((b-a),(c-a));
     normal.normalize();
-    if(DOT(ray.Rd, normal) > 0.0){
+    if(DOT(ray->Rd, normal) > 0.0){
         normal.x = -normal.x;
         normal.y = -normal.y;
         normal.z = -normal.z;
@@ -468,7 +467,7 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
     //for each point light pl in pointLights
     for(int i=0; i<lights.size(); i++) {
         //cast rayl from pl.light_pos to intersectionPoint
-        Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
+        Ray* incidentRay = new Ray(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
         double t, tMinimum=INF;
 
@@ -481,20 +480,20 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
             }
         }
 
-        Vector shadowIntersectionPoint = incidentRay.R0+incidentRay.Rd*tMinimum;
+        Vector shadowIntersectionPoint = incidentRay->R0+incidentRay->Rd*tMinimum;
 
         // if intersectionPoint is in shadow, the diffuse
         // and specular components need not be calculated
-        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
+        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
             continue;
         }
 
         //calculate lambertValue using normal, rayl
         //find reflected ray, rayr for rayl
         //calculate phongValue using r, rayr
-        double lambertValue = DOT((incidentRay.Rd*(-1.0)),normal);
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
-        double phongValue = DOT((ray.Rd*(-1.0)),reflectedRay.Rd);
+        double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+        Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+        double phongValue = DOT((ray->Rd*(-1.0)),reflectedRay->Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
@@ -511,9 +510,9 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
     }
 
     //construct reflected ray from intersection point
-    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd, normal)*2.0);
+    Vector reflectionDirection = ray->Rd-normal*(DOT(ray->Rd, normal)*2.0);
     reflectionDirection.normalize();
-    Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
+    Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
 
     //find tmin from the nearest intersecting object, using
     //intersect() method, as done in the capture() method
@@ -577,24 +576,24 @@ public:
         /* draw(): implemented from base class Object */
     }
 
-    double intersect(Ray, Color&, int);
+    double intersect(Ray*, Color&, int);
 };
 
-double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
+double GeneralQuadricSurface::intersect(Ray* ray, Color& color, int level) {
     double a, b, c, tMin, tMax;
 
-    a = coefficient.a*ray.Rd.x*ray.Rd.x+coefficient.b*ray.Rd.y*ray.Rd.y+coefficient.c*ray.Rd.z*ray.Rd.z;
-    a += coefficient.d*ray.Rd.x*ray.Rd.y+coefficient.e*ray.Rd.x*ray.Rd.z+coefficient.f*ray.Rd.y*ray.Rd.z;
+    a = coefficient.a*ray->Rd.x*ray->Rd.x+coefficient.b*ray->Rd.y*ray->Rd.y+coefficient.c*ray->Rd.z*ray->Rd.z;
+    a += coefficient.d*ray->Rd.x*ray->Rd.y+coefficient.e*ray->Rd.x*ray->Rd.z+coefficient.f*ray->Rd.y*ray->Rd.z;
 
-    b = 2.0*coefficient.a*ray.R0.x*ray.Rd.x+2.0*coefficient.b*ray.R0.y*ray.Rd.y+2.0*coefficient.c*ray.R0.z*ray.Rd.z;
-    b += coefficient.d*(ray.R0.x*ray.Rd.y+ray.Rd.x*ray.R0.y);
-    b += coefficient.e*(ray.R0.x*ray.Rd.z+ray.Rd.x*ray.R0.z);
-    b += coefficient.f*(ray.R0.y*ray.Rd.z+ray.Rd.y*ray.R0.z);
-    b += coefficient.g*ray.Rd.x+coefficient.h*ray.Rd.y+coefficient.i*ray.Rd.z;
+    b = 2.0*coefficient.a*ray->R0.x*ray->Rd.x+2.0*coefficient.b*ray->R0.y*ray->Rd.y+2.0*coefficient.c*ray->R0.z*ray->Rd.z;
+    b += coefficient.d*(ray->R0.x*ray->Rd.y+ray->Rd.x*ray->R0.y);
+    b += coefficient.e*(ray->R0.x*ray->Rd.z+ray->Rd.x*ray->R0.z);
+    b += coefficient.f*(ray->R0.y*ray->Rd.z+ray->Rd.y*ray->R0.z);
+    b += coefficient.g*ray->Rd.x+coefficient.h*ray->Rd.y+coefficient.i*ray->Rd.z;
 
-    c = coefficient.a*ray.R0.x*ray.R0.x+coefficient.b*ray.R0.y*ray.R0.y+coefficient.c*ray.R0.z*ray.R0.z;
-    c += coefficient.d*ray.R0.x*ray.R0.y+coefficient.e*ray.R0.x*ray.R0.z+coefficient.f*ray.R0.y*ray.R0.z;
-    c += coefficient.g*ray.R0.x+coefficient.h*ray.R0.y+coefficient.i*ray.R0.z+coefficient.j;
+    c = coefficient.a*ray->R0.x*ray->R0.x+coefficient.b*ray->R0.y*ray->R0.y+coefficient.c*ray->R0.z*ray->R0.z;
+    c += coefficient.d*ray->R0.x*ray->R0.y+coefficient.e*ray->R0.x*ray->R0.z+coefficient.f*ray->R0.y*ray->R0.z;
+    c += coefficient.g*ray->R0.x+coefficient.h*ray->R0.y+coefficient.i*ray->R0.z+coefficient.j;
 
     if(a == 0.0) {
         tMin = (b == 0.0)? INF: -c/b;
@@ -617,14 +616,14 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     if(tMin < INF) {
         if(tMax < INF) {
             if(tMin > 0.0) {
-                Vector intersectionPoint = ray.R0+ray.Rd*tMin;
+                Vector intersectionPoint = ray->R0+ray->Rd*tMin;
 
                 if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x || intersectionPoint.x>cubeReferencePoint.x+length)) || (width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y || intersectionPoint.y>cubeReferencePoint.y+width)) || (height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z || intersectionPoint.z>cubeReferencePoint.z+height))) {
                     tMin = INF;
                 }
             }
             if(tMax > 0.0) {
-                Vector intersectionPoint = ray.R0+ray.Rd*tMax;
+                Vector intersectionPoint = ray->R0+ray->Rd*tMax;
 
                 if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x || intersectionPoint.x>cubeReferencePoint.x+length)) || (width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y || intersectionPoint.y>cubeReferencePoint.y+width)) || (height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z || intersectionPoint.z>cubeReferencePoint.z+height))) {
                     tMax = INF;
@@ -633,7 +632,7 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
             tMin = (tMin>0.0 && tMin<tMax)? tMin: tMax;
         } else {
             if(tMin > 0.0) {
-                Vector intersectionPoint = ray.R0+ray.Rd*tMin;
+                Vector intersectionPoint = ray->R0+ray->Rd*tMin;
 
                 if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x || intersectionPoint.x>cubeReferencePoint.x+length)) || (width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y || intersectionPoint.y>cubeReferencePoint.y+width)) || (height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z || intersectionPoint.z>cubeReferencePoint.z+height))) {
                     tMin = INF;
@@ -647,7 +646,7 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     }
 
     /* illuminating with Phong Lighting Model */
-    Vector intersectionPoint = ray.R0+ray.Rd*tMin;
+    Vector intersectionPoint = ray->R0+ray->Rd*tMin;
     Color intersectionPointColor = getColor();
 
     /* determining unit normal vector at intersection point on appropriate side of general quadric surface */
@@ -672,7 +671,7 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
 
     /* computing diffuse & specular reflection components of reflected ray */
     for(int i=0; i<lights.size(); i++) {
-        Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
+        Ray* incidentRay= new Ray(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
         /* checking if intersection point is in shadow */
         double t, tMinimum=INF;
@@ -686,16 +685,16 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
             }
         }
 
-        Vector shadowIntersectionPoint = incidentRay.R0+incidentRay.Rd*tMinimum;
+        Vector shadowIntersectionPoint = incidentRay->R0+incidentRay->Rd*tMinimum;
 
-        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
+        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
             continue;
         }
 
         /* computing diffuse & specular components of reflected ray */
-        double lambertValue = DOT((incidentRay.Rd*(-1.0)),normal);
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
-        double phongValue = DOT((ray.Rd*(-1.0)), reflectedRay.Rd);
+        double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+        Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+        double phongValue = DOT((ray->Rd*(-1.0)), reflectedRay->Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
@@ -712,9 +711,9 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     }
 
     /* incorporating concept of evil epsilon to recursive reflection computation */
-    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd, normal)*2.0);
+    Vector reflectionDirection = ray->Rd-normal*(DOT(ray->Rd, normal)*2.0);
     reflectionDirection.normalize();
-    Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
+    Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
 
     /* finding nearest intersecting object (if available) */
     int nearest = INF;
@@ -763,7 +762,7 @@ public:
     }
 
     void draw();
-    double intersect(Ray, Color&, int);
+    double intersect(Ray*, Color&, int);
 };
 
 void Floor::draw() {
@@ -785,15 +784,15 @@ void Floor::draw() {
     }
 }
 
-double Floor::intersect(Ray ray, Color& color, int level) {
+double Floor::intersect(Ray* ray, Color& color, int level) {
     //Normal = (0,0,1)
     Vector normal(0.0, 0.0, 1.0);
 
     //t = -(D + n·Ro) / n·Rd
     double tMin = INF;
     double D = 0;
-    double nR0 = DOT(normal, ray.R0);
-    double nRd = DOT(normal, ray.Rd);
+    double nR0 = DOT(normal, ray->R0);
+    double nRd = DOT(normal, ray->Rd);
     if(nRd != 0.0) {
         tMin = -(D + nR0) / nRd;
     }
@@ -803,7 +802,7 @@ double Floor::intersect(Ray ray, Color& color, int level) {
     }
 
     /* illuminating with Phong Lighting Model */
-    Vector intersectionPoint = ray.R0+ray.Rd*tMin;
+    Vector intersectionPoint = ray->R0+ray->Rd*tMin;
     Vector referencePosition = intersectionPoint-Vector(-floorWidth/2.0, -floorWidth/2.0, 0.0);
     Color intersectionPointColor;
     if(((int) (floor(referencePosition.x/tileWidth)+floor(referencePosition.y/tileWidth)))%2 == 0){
@@ -819,7 +818,7 @@ double Floor::intersect(Ray ray, Color& color, int level) {
     color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
 
     for(int i=0; i<lights.size(); i++) {
-        Ray incidentRay(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
+        Ray* incidentRay = new Ray(lights[i].getPosition(), intersectionPoint-lights[i].getPosition());
 
         double t, tMinimum=INF;
         for(int j=0; j<objects.size(); j++) {
@@ -831,15 +830,15 @@ double Floor::intersect(Ray ray, Color& color, int level) {
             }
         }
 
-        Vector shadowIntersectionPoint = incidentRay.R0+incidentRay.Rd*tMinimum;
+        Vector shadowIntersectionPoint = incidentRay->R0+incidentRay->Rd*tMinimum;
 
-        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
+        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
             continue;
         }
 
-        double lambertValue = DOT((incidentRay.Rd*(-1.0)), normal);
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
-        double phongValue = DOT((ray.Rd*(-1.0)), reflectedRay.Rd);
+        double lambertValue = DOT((incidentRay->Rd*(-1.0)), normal);
+        Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+        double phongValue = DOT((ray->Rd*(-1.0)), reflectedRay->Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
@@ -854,9 +853,9 @@ double Floor::intersect(Ray ray, Color& color, int level) {
         return tMin;
     }
 
-    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd,normal)*2.0);
+    Vector reflectionDirection = ray->Rd-normal*(DOT(ray->Rd,normal)*2.0);
     reflectionDirection.normalize();
-    Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
+    Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
 
     int nearest = INF;
     double t, tMinimum=INF;
