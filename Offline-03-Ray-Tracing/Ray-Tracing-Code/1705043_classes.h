@@ -46,6 +46,10 @@ Vector CROSS(Vector v1, Vector v2){
     return v;
 }
 
+double ValueOfVector(Vector v){
+    return sqrt(pow(v.x, 2.0)+pow(v.y, 2.0)+pow(v.z, 2.0));
+}
+
 double distanceBetweenPoints(Vector p1, Vector p2){
     return sqrt(pow(p1.x-p2.x, 2.0)+pow(p1.y-p2.y, 2.0)+pow(p1.z-p2.z, 2.0));
 }
@@ -146,6 +150,7 @@ public:
     Vector position;
     Color color;
     Vector direction;
+    double cutoffAngle;
     double radius;
     int segments;
     int stacks;
@@ -154,10 +159,11 @@ public:
         radius = 0.0;
         segments = stacks = 0;
     }
-    SpotLight(Vector position, Color color, Vector direction, double radius, int segments = 30, int stacks = 30) {
+    SpotLight(Vector position, Color color, Vector direction, double cutoffAngle, double radius, int segments = 30, int stacks = 30) {
         this->position = position;
         this->color = color;
         this->direction = direction;
+        this->cutoffAngle = cutoffAngle;
         this->radius = radius;
         this->segments = segments;
         this->stacks = stacks;
@@ -365,7 +371,43 @@ public:
 
             // if intersectionPoint is in shadow, the diffuse
             // and specular components need not be calculated
-            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) -(1e-7)> distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+                continue;
+            }
+
+            //calculate lambertValue using normal, rayl
+            //find reflected ray, rayr for rayl
+            //calculate phongValue using r, rayr
+            double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+            Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+            double phongValue = DOT((ray->Rd*(-1.0)),reflectedRay->Rd);
+
+            color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+            color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+            color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+            color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+            color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+            color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        }
+        for (int i = 0; i < spotlights.size(); i++) {
+            Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+            double angle = acos(DOT(intersectionPoint, spotlights[i].getPosition())/(ValueOfVector(intersectionPoint)*
+                                                                                     ValueOfVector(spotlights[i].getPosition())) * PI / 180);
+
+            if (angle > spotlights[i].cutoffAngle) continue;
+            /* checking if intersection point is in shadow */
+            double t, tMinimum = INF;
+            for (int j = 0; j < objects.size(); j++) {
+                Color dummyColor;  // light_color = black
+                t = objects[j]->intersect(incidentRay, dummyColor, 0);
+                if (t <= 0) continue;
+                if (t < tMinimum) {
+                    tMinimum = t;
+                }
+            }
+            Vector shadowIntersectionPoint = incidentRay->R0 + incidentRay->Rd * tMinimum;
+            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) -(1e-7)> distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
                 continue;
             }
 
@@ -523,7 +565,43 @@ public:
 
             // if intersectionPoint is in shadow, the diffuse
             // and specular components need not be calculated
-            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) - (1e-7) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+                continue;
+            }
+
+            //calculate lambertValue using normal, rayl
+            //find reflected ray, rayr for rayl
+            //calculate phongValue using r, rayr
+            double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+            Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+            double phongValue = DOT((ray->Rd*(-1.0)),reflectedRay->Rd);
+
+            color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+            color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+            color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+            color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+            color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+            color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        }
+        for (int i = 0; i < spotlights.size(); i++) {
+            Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+            double angle = acos(DOT(intersectionPoint, spotlights[i].getPosition())/(ValueOfVector(intersectionPoint)*
+                                                                                     ValueOfVector(spotlights[i].getPosition())) * PI / 180);
+
+            if (angle > spotlights[i].cutoffAngle) continue;
+            /* checking if intersection point is in shadow */
+            double t, tMinimum = INF;
+            for (int j = 0; j < objects.size(); j++) {
+                Color dummyColor;  // light_color = black
+                t = objects[j]->intersect(incidentRay, dummyColor, 0);
+                if (t <= 0) continue;
+                if (t < tMinimum) {
+                    tMinimum = t;
+                }
+            }
+            Vector shadowIntersectionPoint = incidentRay->R0 + incidentRay->Rd * tMinimum;
+            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) - (1e-7)> distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
                 continue;
             }
 
@@ -720,7 +798,7 @@ public:
             }
 
             Vector shadowIntersectionPoint = incidentRay->R0+incidentRay->Rd*tMinimum;
-            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) -(1e-7)> distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
                 continue;
             }
 
@@ -736,6 +814,43 @@ public:
             color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
             color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
             color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
+        }
+        for (int i = 0; i < spotlights.size(); i++) {
+            Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+            double angle = acos(DOT(intersectionPoint, spotlights[i].getPosition())/(ValueOfVector(intersectionPoint)*
+                                                                                     ValueOfVector(spotlights[i].getPosition())) * PI / 180);
+
+            if (angle > spotlights[i].cutoffAngle) continue;
+            /* checking if intersection point is in shadow */
+            double t, tMinimum = INF;
+            for (int j = 0; j < objects.size(); j++) {
+                Color dummyColor;  // light_color = black
+                t = objects[j]->intersect(incidentRay, dummyColor, 0);
+                if (t <= 0) continue;
+                if (t < tMinimum) {
+                    tMinimum = t;
+                }
+            }
+            Vector shadowIntersectionPoint = incidentRay->R0 + incidentRay->Rd * tMinimum;
+            double epsilon = 1e-7;  // for tuning light effect
+            if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) -(1e-7) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+                continue;
+            }
+
+            //calculate lambertValue using normal, rayl
+            //find reflected ray, rayr for rayl
+            //calculate phongValue using r, rayr
+            double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+            Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+            double phongValue = DOT((ray->Rd*(-1.0)),reflectedRay->Rd);
+
+            color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+            color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+            color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+            color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+            color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+            color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
         }
 
         if(level >= levelOfRecursion) {
@@ -857,7 +972,7 @@ double Floor::intersect(Ray* ray, Color& color, int level) {
 
         Vector shadowIntersectionPoint = incidentRay->R0+incidentRay->Rd*tMinimum;
 
-        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) -(1e-7)> distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
             continue;
         }
 
@@ -872,6 +987,42 @@ double Floor::intersect(Ray* ray, Color& color, int level) {
         color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
         color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
         color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
+    }
+    for (int i = 0; i < spotlights.size(); i++) {
+        Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+        double angle = acos(DOT(intersectionPoint, spotlights[i].getPosition())/(ValueOfVector(intersectionPoint)*
+                                                                                 ValueOfVector(spotlights[i].getPosition()))) * 180 / PI;
+
+        if (angle > spotlights[i].cutoffAngle) continue;
+        /* checking if intersection point is in shadow */
+        double t, tMinimum = INF;
+        for (int j = 0; j < objects.size(); j++) {
+            Color dummyColor;  // light_color = black
+            t = objects[j]->intersect(incidentRay, dummyColor, 0);
+            if (t <= 0) continue;
+            if (t < tMinimum) {
+                tMinimum = t;
+            }
+        }
+        Vector shadowIntersectionPoint = incidentRay->R0 + incidentRay->Rd * tMinimum;
+        if(distanceBetweenPoints(intersectionPoint, incidentRay->R0) - (1e-7)> distanceBetweenPoints(shadowIntersectionPoint, incidentRay->R0)){
+            continue;
+        }
+
+        //calculate lambertValue using normal, rayl
+        //find reflected ray, rayr for rayl
+        //calculate phongValue using r, rayr
+        double lambertValue = DOT((incidentRay->Rd*(-1.0)),normal);
+        Ray* reflectedRay = new Ray(intersectionPoint, incidentRay->Rd-normal*(DOT(incidentRay->Rd, normal)*2.0));
+        double phongValue = DOT((ray->Rd*(-1.0)),reflectedRay->Rd);
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
+
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
     }
 
     if(level >= levelOfRecursion) {

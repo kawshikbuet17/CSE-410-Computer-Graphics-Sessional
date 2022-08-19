@@ -278,6 +278,9 @@ void drawLights(){
     for(int i=0; i<lights.size(); i++) {
         lights[i].draw();
     }
+    for(int i=0; i<spotlights.size(); i++){
+        spotlights[i].draw();
+    }
 }
 
 void display() {
@@ -428,12 +431,14 @@ void loadData() {
         Vector position;
         Color color;
         Vector direction;
+        double cutoffAngle;
 
         fin >> position.x >> position.y >> position.z;
         fin >> color.red >> color.green >> color.blue;
         fin >> direction.x >> direction.y >> direction.z;
+        fin >> cutoffAngle;
 
-        spotlights.push_back(SpotLight(position, color, direction, 1.0));
+        spotlights.push_back(SpotLight(position, color, direction, cutoffAngle, 2.0));
     }
     fin.close();
 
