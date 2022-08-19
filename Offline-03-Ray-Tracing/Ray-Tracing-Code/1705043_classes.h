@@ -16,58 +16,34 @@ public:
         this->y = y;
         this->z = z;
     }
-    void normalize();
-    double computeDistanceBetween(Vector);
-    Vector operator+(const Vector);
-    Vector operator-(const Vector);
-    Vector operator*(const double);
-    double operator/(const Vector);
-    Vector operator%(const Vector);
+    void normalize() {
+        double len = sqrt(pow(x, 2.0)+pow(y, 2.0)+pow(z, 2.0));
+        x /= len;
+        y /= len;
+        z /= len;
+    }
+    Vector operator+(const Vector v) {
+        return Vector(x + v.x, y + v.y, z + v.z);
+    }
 
-    friend ostream& operator<<(ostream&, Vector&);
+    Vector operator-(const Vector v) {
+        return Vector(x - v.x, y - v.y, z - v.z);
+    }
+    Vector operator*(const double scalar) {
+        return Vector(x*scalar, y*scalar, z*scalar);
+    }
 };
-
-void Vector::normalize() {
-    double magnitude = sqrt(pow(x, 2.0)+pow(y, 2.0)+pow(z, 2.0));
-    x /= magnitude;
-    y /= magnitude;
-    z /= magnitude;
-}
-
-double Vector::computeDistanceBetween(Vector _vector) {
-    return sqrt(pow(x-_vector.x, 2.0)+pow(y-_vector.y, 2.0)+pow(z-_vector.z, 2.0));
-}
-
-Vector Vector::operator+(const Vector _vector) {
-    return Vector(x+_vector.x, y+_vector.y, z+_vector.z);
-}
-
-Vector Vector::operator-(const Vector _vector) {
-    return Vector(x-_vector.x, y-_vector.y, z-_vector.z);
-}
-
-Vector Vector::operator*(const double scalar) {
-    /* vector scalar multiplication */
-    return Vector(x*scalar, y*scalar, z*scalar);
-}
-
-double Vector::operator/(const Vector _vector) {
-    /* vector dot multiplication */
-    return x*_vector.x+y*_vector.y+z*_vector.z;
-}
-
-Vector Vector::operator%(const Vector _vector) {
-    /* vector cross multiplication */
-    return Vector(y*_vector.z-z*_vector.y, z*_vector.x-x*_vector.z, x*_vector.y-y*_vector.x);
-}
-
-ostream& operator<<(ostream &output, Vector &_vector) {
-    output << '(' << _vector.x << ", " << _vector.y << ", " << _vector.z << ')';
-    return output;
-}
 
 double DOT(Vector v1, Vector v2){
     return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
+}
+
+Vector CROSS(Vector v1, Vector v2){
+    Vector v;
+    v.x = v1.y*v2.z - v1.z*v2.y;
+    v.y = v1.z*v2.x - v1.x*v2.z;
+    v.z = v1.x*v2.y - v1.y*v2.x;
+    return v;
 }
 
 double distanceBetweenPoints(Vector p1, Vector p2){
@@ -86,7 +62,6 @@ public:
     }
 };
 
-
 class Color {
 public:
     double red, green, blue;
@@ -101,7 +76,6 @@ public:
         this->blue = blue;
     }
 };
-
 
 class PointLight {
     Vector position;
@@ -212,50 +186,12 @@ public:
         this->reflectionCoefficient = reflectionCoefficient;
     }
 
-    int getShine() const {
-        return shine;
-    }
-
     void setShine(int shine) {
         this->shine = shine;
     }
-
-    void computeAmbientLightComponent(Color&, Color);
-    void computeReflectionComponents(Ray, Color&, Vector, Color, Vector, PointLight, Ray);
-    void computeRecursiveReflectionComponent(Color&, Color);
-
     virtual void draw() = 0;
     virtual double intersect(Ray, Color&, int) = 0;
 };
-
-void Object::computeAmbientLightComponent(Color& color, Color intersectionPointColor) {
-    color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
-    color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
-    color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
-}
-
-void Object::computeReflectionComponents(Ray ray, Color& color, Vector intersectionPoint, Color intersectionPointColor, Vector normal, PointLight light, Ray incidentRay) {
-    double lambertValue = (incidentRay.Rd*(-1.0))/normal;
-    Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
-    double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
-
-    color.red += light.getColor().red*intersectionPointColor.red*reflectionCoefficient.diffuse*max(lambertValue, 0.0);
-    color.green += light.getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse*max(lambertValue, 0.0);
-    color.blue += light.getColor().blue*intersectionPointColor.blue*reflectionCoefficient.diffuse*max(lambertValue, 0.0);
-
-    color.red += light.getColor().red*intersectionPointColor.red*reflectionCoefficient.specular*pow(max(phongValue, 0.0),
-                                                                                                    getShine());
-    color.green += light.getColor().green*intersectionPointColor.green*reflectionCoefficient.specular*pow(max(phongValue, 0.0),
-                                                                                                          getShine());
-    color.blue += light.getColor().blue*intersectionPointColor.blue*reflectionCoefficient.specular*pow(max(phongValue, 0.0),
-                                                                                                       getShine());
-}
-
-void Object::computeRecursiveReflectionComponent(Color& color, Color reflectedColor) {
-    color.red += reflectedColor.red*reflectionCoefficient.recursive;
-    color.green += reflectedColor.green*reflectionCoefficient.recursive;
-    color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
-}
 
 Vector pos, u, r, l;
 
@@ -384,24 +320,24 @@ double Sphere::intersect(Ray ray, Color& color, int level) {
 
         // if intersectionPoint is in shadow, the diffuse
         // and specular components need not be calculated
-        if(intersectionPoint.computeDistanceBetween(incidentRay.R0)-epsilon > shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
+        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
             continue;
         }
 
         //calculate lambertValue using normal, rayl
         //find reflected ray, rayr for rayl
         //calculate phongValue using r, rayr
-        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
-        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+        double lambertValue = DOT((incidentRay.Rd*(-1.0)),normal);
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
+        double phongValue = DOT((ray.Rd*(-1.0)),reflectedRay.Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
 
-        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
-        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
-        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
     }
 
     //if level ≥ recursion_level, return tmin
@@ -450,10 +386,6 @@ class Triangle: public Object {
     Vector c;
 
 public:
-    Triangle() {
-        /* default constructor */
-    }
-
     Triangle(Vector a, Vector b, Vector c) {
         this->a = a;
         this->b = b;
@@ -525,7 +457,7 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
     color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
 
     //calculate normal
-    Vector normal = (b-a)%(c-a);
+    Vector normal = CROSS((b-a),(c-a));
     normal.normalize();
     if(DOT(ray.Rd, normal) > 0.0){
         normal.x = -normal.x;
@@ -553,24 +485,24 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
 
         // if intersectionPoint is in shadow, the diffuse
         // and specular components need not be calculated
-        if(intersectionPoint.computeDistanceBetween(incidentRay.R0)> shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
+        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
             continue;
         }
 
         //calculate lambertValue using normal, rayl
         //find reflected ray, rayr for rayl
         //calculate phongValue using r, rayr
-        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
-        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+        double lambertValue = DOT((incidentRay.Rd*(-1.0)),normal);
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
+        double phongValue = DOT((ray.Rd*(-1.0)),reflectedRay.Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green*intersectionPointColor.green*reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
 
-        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
-        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
-        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), getShine());
+        color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
+        color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0), shine);
     }
 
     //if level ≥ recursion_level, return tmin
@@ -579,7 +511,7 @@ double Triangle::intersect(Ray ray, Color& color, int level) {
     }
 
     //construct reflected ray from intersection point
-    Vector reflectionDirection = ray.Rd-normal*((ray.Rd/normal)*2.0);
+    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd, normal)*2.0);
     reflectionDirection.normalize();
     Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
 
@@ -737,7 +669,6 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
 
     Vector normal(xNormal, yNormal, zNormal);
     normal.normalize();
-    normal = ((ray.Rd*(-1.0))/normal > 0.0)? normal: normal*(-1.0);
 
     /* computing diffuse & specular reflection components of reflected ray */
     for(int i=0; i<lights.size(); i++) {
@@ -756,25 +687,23 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
         }
 
         Vector shadowIntersectionPoint = incidentRay.R0+incidentRay.Rd*tMinimum;
-        double epsilon = 0.0000001;  // for tuning light effect
 
-        if(intersectionPoint.computeDistanceBetween(incidentRay.R0)-epsilon > shadowIntersectionPoint.computeDistanceBetween(incidentRay.R0)) {
-            /* intersection point is, indeed, in shadow */
+        if(distanceBetweenPoints(intersectionPoint, incidentRay.R0) > distanceBetweenPoints(shadowIntersectionPoint, incidentRay.R0)){
             continue;
         }
 
         /* computing diffuse & specular components of reflected ray */
-        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
-        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+        double lambertValue = DOT((incidentRay.Rd*(-1.0)),normal);
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
+        double phongValue = DOT((ray.Rd*(-1.0)), reflectedRay.Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
 
-        color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
-        color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
-        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
+        color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
+        color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
     }
 
     /* handling recursive reflection */
@@ -783,12 +712,12 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     }
 
     /* incorporating concept of evil epsilon to recursive reflection computation */
-    Vector reflectionDirection = ray.Rd-normal*((ray.Rd/normal)*2.0);
+    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd, normal)*2.0);
     reflectionDirection.normalize();
     Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
 
     /* finding nearest intersecting object (if available) */
-    int nearest = INT_MAX;
+    int nearest = INF;
     double t, tMinimum=INF;
 
     for(int i=0; i<objects.size(); i++) {
@@ -804,7 +733,7 @@ double GeneralQuadricSurface::intersect(Ray ray, Color& color, int level) {
     /* finding color component for reflected ray */
     Color reflectedColor;  // color = black
 
-    if(nearest != INT_MAX) {
+    if(nearest != INF) {
         tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
     }
 
@@ -908,24 +837,24 @@ double Floor::intersect(Ray ray, Color& color, int level) {
             continue;
         }
 
-        double lambertValue = (incidentRay.Rd*(-1.0))/normal;
-        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*((incidentRay.Rd/normal)*2.0));
-        double phongValue = (ray.Rd*(-1.0))/reflectedRay.Rd;
+        double lambertValue = DOT((incidentRay.Rd*(-1.0)), normal);
+        Ray reflectedRay(intersectionPoint, incidentRay.Rd-normal*(DOT(incidentRay.Rd, normal)*2.0));
+        double phongValue = DOT((ray.Rd*(-1.0)), reflectedRay.Rd);
 
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
         color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.diffuse * max(lambertValue, 0.0);
 
-        color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
-        color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
-        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),getShine());
+        color.red += lights[i].getColor().red*intersectionPointColor.red * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
+        color.green += lights[i].getColor().green*intersectionPointColor.green * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
+        color.blue += lights[i].getColor().blue*intersectionPointColor.blue * reflectionCoefficient.specular * pow(max(phongValue, 0.0),shine);
     }
 
     if(level >= levelOfRecursion) {
         return tMin;
     }
 
-    Vector reflectionDirection = ray.Rd-normal*((ray.Rd/normal)*2.0);
+    Vector reflectionDirection = ray.Rd-normal*(DOT(ray.Rd,normal)*2.0);
     reflectionDirection.normalize();
     Ray reflectedRay(intersectionPoint+reflectionDirection, reflectionDirection);
 

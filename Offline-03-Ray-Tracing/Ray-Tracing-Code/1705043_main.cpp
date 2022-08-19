@@ -76,7 +76,7 @@ void drawAxes()
 }
 
 void capture() {
-    cout << pos << ": Bitmap Image Capturing" << endl;
+    cout << "Bitmap Image Capturing" << endl;
     int imageWidth = pixelsAlongBothDimensions;
     int imageHeight = pixelsAlongBothDimensions;
 
