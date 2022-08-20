@@ -562,7 +562,7 @@ public:
         double t, tMinimum=INF;
 
         for(int i=0; i<objects.size(); i++) {
-            Color dummyColor;  // color = black
+            Color dummyColor;
             t = objects[i]->intersect(reflectedRay, dummyColor, 0);
 
             if(t>0.0 && t<tMinimum) {
@@ -573,7 +573,7 @@ public:
 
         // colorreflected will be updated while in the subsequent call
         // update color using the impact of reflection
-        Color reflectedColor;  // color = black
+        Color reflectedColor;
 
         if(nearest != INF) {
             tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
@@ -623,23 +623,46 @@ public:
                 if(tMin > 0.0) {
                     Vector3D intersectionPoint = ray->R0 + ray->Rd * tMin;
 
-                    if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x || intersectionPoint.x>cubeReferencePoint.x+length)) || (width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y || intersectionPoint.y>cubeReferencePoint.y+width)) || (height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z || intersectionPoint.z>cubeReferencePoint.z+height))) {
+                    if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x or intersectionPoint.x>cubeReferencePoint.x+length))) {
+                        tMin = INF;
+                    }
+                    else if(width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y or intersectionPoint.y>cubeReferencePoint.y+width)){
+                        tMin = INF;
+                    }
+                    else if(height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z or intersectionPoint.z>cubeReferencePoint.z+height)){
                         tMin = INF;
                     }
                 }
                 if(tMax > 0.0) {
                     Vector3D intersectionPoint = ray->R0 + ray->Rd * tMax;
 
-                    if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x || intersectionPoint.x>cubeReferencePoint.x+length)) || (width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y || intersectionPoint.y>cubeReferencePoint.y+width)) || (height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z || intersectionPoint.z>cubeReferencePoint.z+height))) {
+                    if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x or intersectionPoint.x>cubeReferencePoint.x+length))) {
+                        tMax = INF;
+                    }
+                    else if(width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y or intersectionPoint.y>cubeReferencePoint.y+width)){
+                        tMax = INF;
+                    }
+                    else if(height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z or intersectionPoint.z>cubeReferencePoint.z+height)){
                         tMax = INF;
                     }
                 }
-                tMin = (tMin>0.0 && tMin<tMax)? tMin: tMax;
+                if(tMin > 0.0 and tMin < tMax){
+                    ;
+                }
+                else{
+                    tMin = tMax;
+                }
             } else {
                 if(tMin > 0.0) {
                     Vector3D intersectionPoint = ray->R0 + ray->Rd * tMin;
 
-                    if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x || intersectionPoint.x>cubeReferencePoint.x+length)) || (width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y || intersectionPoint.y>cubeReferencePoint.y+width)) || (height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z || intersectionPoint.z>cubeReferencePoint.z+height))) {
+                    if((length!=0.0 && (intersectionPoint.x<cubeReferencePoint.x or intersectionPoint.x>cubeReferencePoint.x+length))) {
+                        tMin = INF;
+                    }
+                    else if((width!=0.0 && (intersectionPoint.y<cubeReferencePoint.y or intersectionPoint.y>cubeReferencePoint.y+width))){
+                        tMin = INF;
+                    }
+                    else if((height!=0.0 && (intersectionPoint.z<cubeReferencePoint.z or intersectionPoint.z>cubeReferencePoint.z+height))){
                         tMin = INF;
                     }
                 }
