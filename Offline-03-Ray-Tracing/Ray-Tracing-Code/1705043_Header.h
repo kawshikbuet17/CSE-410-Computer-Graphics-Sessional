@@ -376,10 +376,11 @@ public:
             color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(phongValue, shine);
         }
         for (int i = 0; i < spotlights.size(); i++) {
-            Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+            Vector3D direction = intersectionPoint - spotlights[i].getPosition();
+            Ray* incidentRay = new Ray(spotlights[i].getPosition(), direction);
             Vector3D A = intersectionPoint - spotlights[i].getPosition();
             Vector3D B = spotlights[i].direction;
-            double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B)) * PI / 180);
+            double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B))) * 180 / PI;
 
             if (angle > spotlights[i].cutoffAngle) continue;
             /* checking if intersection point is in shadow */
@@ -575,10 +576,11 @@ public:
             color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(phongValue, shine);
         }
         for (int i = 0; i < spotlights.size(); i++) {
-            Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+            Vector3D direction = intersectionPoint - spotlights[i].getPosition();
+            Ray* incidentRay = new Ray(spotlights[i].getPosition(), direction);
             Vector3D A = intersectionPoint - spotlights[i].getPosition();
             Vector3D B = spotlights[i].direction;
-            double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B)) * PI / 180);
+            double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B))) * 180 / PI;
 
             if (angle > spotlights[i].cutoffAngle) continue;
             /* checking if intersection point is in shadow */
@@ -818,10 +820,11 @@ public:
             color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(phongValue, shine);
         }
         for (int i = 0; i < spotlights.size(); i++) {
-            Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+            Vector3D direction = intersectionPoint - spotlights[i].getPosition();
+            Ray* incidentRay = new Ray(spotlights[i].getPosition(), direction);
             Vector3D A = intersectionPoint - spotlights[i].getPosition();
             Vector3D B = spotlights[i].direction;
-            double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B)) * PI / 180);;
+            double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B))) * 180 / PI;
 
             if (angle > spotlights[i].cutoffAngle) continue;
             /* checking if intersection point is in shadow */
@@ -1002,10 +1005,11 @@ double Floor::intersect(Ray* ray, Color& color, int level) {
         color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(phongValue, shine);
     }
     for (int i = 0; i < spotlights.size(); i++) {
-        Ray* incidentRay = new Ray(spotlights[i].getPosition(), spotlights[i].direction);
+        Vector3D direction = intersectionPoint - spotlights[i].getPosition();
+        Ray* incidentRay = new Ray(spotlights[i].getPosition(), direction);
         Vector3D A = intersectionPoint - spotlights[i].getPosition();
         Vector3D B = spotlights[i].direction;
-        double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B)) * PI / 180);
+        double angle = acos(DOT(A, B)/(ValueOfVector(A)*ValueOfVector(B))) * 180 / PI;
 
         if (angle > spotlights[i].cutoffAngle) continue;
         /* checking if intersection point is in shadow */
