@@ -334,6 +334,22 @@ void spotLightDiffuseAndSpecular(Ray* ray, Vector3D& intersectionPoint, Vector3D
     }
 }
 
+int findNearestObject(Ray* reflectedRay, double& tMinimum){
+    int nearest = INF;
+    double t;
+
+    for(int i=0; i<objects.size(); i++) {
+        Color dummyColor;
+        t = objects[i]->intersect(reflectedRay, dummyColor, 0);
+
+        if(t>0.0 and t<tMinimum) {
+            tMinimum = t;
+            nearest = i;
+        }
+    }
+    return nearest;
+}
+
 class Sphere: public Object {
 public:
     Vector3D center;
@@ -437,18 +453,8 @@ public:
         //find tmin from the nearest intersecting object, using
         //intersect() method, as done in the capture() method
         //if found, call intersect(rreflected, colorreflected, level+1)
-        int nearest = INF;
-        double t, tMinimum=INF;
-
-        for(int i=0; i<objects.size(); i++) {
-            Color dummyColor;  // color = black
-            t = objects[i]->intersect(reflectedRay, dummyColor, 0);
-
-            if(t>0.0 and t<tMinimum) {
-                tMinimum = t;
-                nearest = i;
-            }
-        }
+        double tMinimum = INF;
+        int nearest = findNearestObject(reflectedRay, tMinimum);
 
         // colorreflected will be updated while in the subsequent call
         // update color using the impact of reflection
@@ -558,18 +564,8 @@ public:
         //find tmin from the nearest intersecting object, using
         //intersect() method, as done in the capture() method
         //if found, call intersect(rreflected, colorreflected, level+1)
-        int nearest = INF;
-        double t, tMinimum=INF;
-
-        for(int i=0; i<objects.size(); i++) {
-            Color dummyColor;
-            t = objects[i]->intersect(reflectedRay, dummyColor, 0);
-
-            if(t>0.0 && t<tMinimum) {
-                tMinimum = t;
-                nearest = i;
-            }
-        }
+        double tMinimum = INF;
+        int nearest = findNearestObject(reflectedRay, tMinimum);
 
         // colorreflected will be updated while in the subsequent call
         // update color using the impact of reflection
@@ -721,19 +717,13 @@ public:
         color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
         color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
 
-        double xNormal, yNormal, zNormal;
-        xNormal = 2.0*coefficient.a*intersectionPoint.x + coefficient.d*intersectionPoint.y;
-        xNormal += coefficient.e*intersectionPoint.z + coefficient.g;
+        double xn, yn, zn;
+        xn = 2.0 * coefficient.a * intersectionPoint.x + coefficient.d * intersectionPoint.y + coefficient.e * intersectionPoint.z + coefficient.g;
+        yn = 2.0 * coefficient.b * intersectionPoint.y + coefficient.d * intersectionPoint.x + coefficient.f * intersectionPoint.z + coefficient.h;
+        zn = 2.0 * coefficient.c * intersectionPoint.z + coefficient.e * intersectionPoint.x + coefficient.f * intersectionPoint.y + coefficient.i;
 
-        yNormal = 2.0*coefficient.b*intersectionPoint.y + coefficient.d*intersectionPoint.x;
-        yNormal += coefficient.f*intersectionPoint.z + coefficient.h;
-
-        zNormal = 2.0*coefficient.c*intersectionPoint.z + coefficient.e*intersectionPoint.x;
-        zNormal += coefficient.f*intersectionPoint.y + coefficient.i;
-
-        Vector3D normal(xNormal, yNormal, zNormal);
+        Vector3D normal(xn, yn, zn);
         normal.normalize();
-
 
         pointLightDiffuseAndSpecular(ray, intersectionPoint, normal, intersectionPointColor, color, reflectionCoefficient, shine);
         spotLightDiffuseAndSpecular(ray, intersectionPoint, normal, intersectionPointColor, color, reflectionCoefficient, shine);
@@ -746,18 +736,8 @@ public:
         reflectionDirection.normalize();
         Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
 
-        int nearest = INF;
-        double t, tMinimum=INF;
-
-        for(int i=0; i<objects.size(); i++) {
-            Color dummyColor;  // color = black
-            t = objects[i]->intersect(reflectedRay, dummyColor, 0);
-
-            if(t>0.0 && t<tMinimum) {
-                tMinimum = t;
-                nearest = i;
-            }
-        }
+        double tMinimum = INF;
+        int nearest = findNearestObject(reflectedRay, tMinimum);
 
         Color reflectedColor;
 
@@ -794,9 +774,17 @@ public:
 };
 
 void Floor::draw() {
-    for(int i=0, row=(int) floorWidth/tileWidth, column=(int) floorWidth/tileWidth; i<row; i++) {
+    int row = (int) floorWidth/tileWidth;
+    int column=(int) floorWidth/tileWidth;
+    for(int i=0; i< row; i++) {
         for(int j=0; j<column; j++) {
-            glColor3f(((i+j)%2 == 0)? getColor().red: foregroundColor.red, ((i+j)%2 == 0)? getColor().green: foregroundColor.green, ((i+j)%2 == 0)? getColor().blue: foregroundColor.blue);
+            if((i+j)%2 == 0){
+                glColor3f(getColor().red,  getColor().green, getColor().blue);
+            }
+            else{
+                glColor3f(foregroundColor.red, foregroundColor.green, foregroundColor.blue);
+            }
+
             Vector3D leftBottomCorner(-floorWidth / 2.0 + tileWidth * j, -floorWidth / 2.0 + tileWidth * i, 0.0);
             glBegin(GL_QUADS);
             {
@@ -812,7 +800,8 @@ void Floor::draw() {
 
 double Floor::intersect(Ray* ray, Color& color, int level) {
     //Normal = (0,0,1)
-    Vector3D normal(0.0, 0.0, 1.0);
+    double xn = 0.0, yn = 0.0, zn = 1.0;
+    Vector3D normal(xn, yn, zn);
 
     //t = -(D + n·Ro) / n·Rd
     double tMin = INF;
@@ -853,18 +842,8 @@ double Floor::intersect(Ray* ray, Color& color, int level) {
     reflectionDirection.normalize();
     Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
 
-    int nearest = INF;
-    double t, tMinimum=INF;
-
-    for(int i=0; i<objects.size(); i++) {
-        Color dummyColor;
-        t = objects[i]->intersect(reflectedRay, dummyColor, 0);
-
-        if(t>0.0 and t<tMinimum) {
-            tMinimum = t;
-            nearest = i;
-        }
-    }
+    double tMinimum = INF;
+    int nearest = findNearestObject(reflectedRay, tMinimum);
 
     Color reflectedColor;
 
