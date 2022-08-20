@@ -769,91 +769,89 @@ public:
         this->foregroundColor = foregroundColor;
     }
 
-    void draw();
-    double intersect(Ray*, Color&, int);
-};
+    void draw() {
+        int row;
+        row = round(floorWidth / tileWidth);
+        int column;
+        column = round(floorWidth / tileWidth);
+        for(int i=0; i< row; i++) {
+            for(int j=0; j<column; j++) {
+                if((i+j)%2 == 0){
+                    glColor3f(getColor().red,  getColor().green, getColor().blue);
+                }
+                else{
+                    glColor3f(foregroundColor.red, foregroundColor.green, foregroundColor.blue);
+                }
 
-void Floor::draw() {
-    int row = (int) floorWidth/tileWidth;
-    int column=(int) floorWidth/tileWidth;
-    for(int i=0; i< row; i++) {
-        for(int j=0; j<column; j++) {
-            if((i+j)%2 == 0){
-                glColor3f(getColor().red,  getColor().green, getColor().blue);
+                Vector3D leftBottomCorner(-floorWidth / 2.0 + tileWidth * j, -floorWidth / 2.0 + tileWidth * i, 0.0);
+                glBegin(GL_QUADS);
+                {
+                    glVertex3f(leftBottomCorner.x, leftBottomCorner.y, leftBottomCorner.z);
+                    glVertex3f(leftBottomCorner.x+tileWidth, leftBottomCorner.y, leftBottomCorner.z);
+                    glVertex3f(leftBottomCorner.x+tileWidth, leftBottomCorner.y+tileWidth, leftBottomCorner.z);
+                    glVertex3f(leftBottomCorner.x, leftBottomCorner.y+tileWidth, leftBottomCorner.z);
+                }
+                glEnd();
             }
-            else{
-                glColor3f(foregroundColor.red, foregroundColor.green, foregroundColor.blue);
-            }
-
-            Vector3D leftBottomCorner(-floorWidth / 2.0 + tileWidth * j, -floorWidth / 2.0 + tileWidth * i, 0.0);
-            glBegin(GL_QUADS);
-            {
-                glVertex3f(leftBottomCorner.x, leftBottomCorner.y, leftBottomCorner.z);
-                glVertex3f(leftBottomCorner.x+tileWidth, leftBottomCorner.y, leftBottomCorner.z);
-                glVertex3f(leftBottomCorner.x+tileWidth, leftBottomCorner.y+tileWidth, leftBottomCorner.z);
-                glVertex3f(leftBottomCorner.x, leftBottomCorner.y+tileWidth, leftBottomCorner.z);
-            }
-            glEnd();
         }
     }
-}
+    double intersect(Ray* ray, Color& color, int level) {
+        //Normal = (0,0,1)
+        double xn = 0.0, yn = 0.0, zn = 1.0;
+        Vector3D normal(xn, yn, zn);
 
-double Floor::intersect(Ray* ray, Color& color, int level) {
-    //Normal = (0,0,1)
-    double xn = 0.0, yn = 0.0, zn = 1.0;
-    Vector3D normal(xn, yn, zn);
+        //t = -(D + n·Ro) / n·Rd
+        double tMin = INF;
+        double D = 0;
+        double nR0 = DOT(normal, ray->R0);
+        double nRd = DOT(normal, ray->Rd);
+        if(nRd != 0.0) {
+            tMin = -(D + nR0) / nRd;
+        }
 
-    //t = -(D + n·Ro) / n·Rd
-    double tMin = INF;
-    double D = 0;
-    double nR0 = DOT(normal, ray->R0);
-    double nRd = DOT(normal, ray->Rd);
-    if(nRd != 0.0) {
-        tMin = -(D + nR0) / nRd;
-    }
+        if(level == 0) {
+            return tMin;
+        }
 
-    if(level == 0) {
+        Vector3D intersectionPoint = ray->R0 + ray->Rd * tMin;
+        Vector3D referencePosition = intersectionPoint - Vector3D(-floorWidth / 2.0, -floorWidth / 2.0, 0.0);
+        Color intersectionPointColor;
+        if(((int) (floor(referencePosition.x/tileWidth)+floor(referencePosition.y/tileWidth)))%2 == 0){
+            intersectionPointColor = getColor();
+        }
+        else{
+            intersectionPointColor = foregroundColor;
+        }
+
+        //ambient component
+        color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
+        color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
+        color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
+
+        pointLightDiffuseAndSpecular(ray, intersectionPoint, normal, intersectionPointColor, color, reflectionCoefficient, shine);
+        spotLightDiffuseAndSpecular(ray, intersectionPoint, normal, intersectionPointColor, color, reflectionCoefficient, shine);
+
+        if(level >= levelOfRecursion) {
+            return tMin;
+        }
+
+        Vector3D reflectionDirection = ray->Rd - normal * (DOT(ray->Rd, normal) * 2.0);
+        reflectionDirection.normalize();
+        Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
+
+        double tMinimum = INF;
+        int nearest = findNearestObject(reflectedRay, tMinimum);
+
+        Color reflectedColor;
+
+        if(nearest != INF) {
+            tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
+        }
+
+        color.red += reflectedColor.red*reflectionCoefficient.recursive;
+        color.green += reflectedColor.green*reflectionCoefficient.recursive;
+        color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
+
         return tMin;
     }
-
-    Vector3D intersectionPoint = ray->R0 + ray->Rd * tMin;
-    Vector3D referencePosition = intersectionPoint - Vector3D(-floorWidth / 2.0, -floorWidth / 2.0, 0.0);
-    Color intersectionPointColor;
-    if(((int) (floor(referencePosition.x/tileWidth)+floor(referencePosition.y/tileWidth)))%2 == 0){
-        intersectionPointColor = getColor();
-    }
-    else{
-        intersectionPointColor = foregroundColor;
-    }
-
-    //ambient component
-    color.red = intersectionPointColor.red*reflectionCoefficient.ambient;
-    color.green = intersectionPointColor.green*reflectionCoefficient.ambient;
-    color.blue = intersectionPointColor.blue*reflectionCoefficient.ambient;
-
-    pointLightDiffuseAndSpecular(ray, intersectionPoint, normal, intersectionPointColor, color, reflectionCoefficient, shine);
-    spotLightDiffuseAndSpecular(ray, intersectionPoint, normal, intersectionPointColor, color, reflectionCoefficient, shine);
-
-    if(level >= levelOfRecursion) {
-        return tMin;
-    }
-
-    Vector3D reflectionDirection = ray->Rd - normal * (DOT(ray->Rd, normal) * 2.0);
-    reflectionDirection.normalize();
-    Ray* reflectedRay = new Ray(intersectionPoint+reflectionDirection, reflectionDirection);
-
-    double tMinimum = INF;
-    int nearest = findNearestObject(reflectedRay, tMinimum);
-
-    Color reflectedColor;
-
-    if(nearest != INF) {
-        tMinimum = objects[nearest]->intersect(reflectedRay, reflectedColor, level+1);
-    }
-
-    color.red += reflectedColor.red*reflectionCoefficient.recursive;
-    color.green += reflectedColor.green*reflectionCoefficient.recursive;
-    color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
-
-    return tMin;
-}
+};
