@@ -668,20 +668,13 @@ public:
     }
 
     double intersect(Ray* ray, Color& color, int level) {
-        double a, b, c, tMin, tMax;
+        double a, b, c;
 
         a = coefficient.a*ray->Rd.x*ray->Rd.x+coefficient.b*ray->Rd.y*ray->Rd.y + coefficient.c*ray->Rd.z*ray->Rd.z + coefficient.d*ray->Rd.x*ray->Rd.y + coefficient.e*ray->Rd.x*ray->Rd.z+coefficient.f*ray->Rd.y*ray->Rd.z;
+        b = 2.0*coefficient.a*ray->R0.x*ray->Rd.x + 2.0*coefficient.b*ray->R0.y*ray->Rd.y + 2.0*coefficient.c*ray->R0.z*ray->Rd.z + coefficient.d*(ray->R0.x*ray->Rd.y + ray->Rd.x*ray->R0.y) + coefficient.e*(ray->R0.x*ray->Rd.z + ray->Rd.x*ray->R0.z) + coefficient.f*(ray->R0.y*ray->Rd.z + ray->Rd.y*ray->R0.z) + coefficient.g*ray->Rd.x+coefficient.h*ray->Rd.y + coefficient.i*ray->Rd.z;
+        c = coefficient.a*ray->R0.x*ray->R0.x + coefficient.b*ray->R0.y*ray->R0.y + coefficient.c*ray->R0.z*ray->R0.z + coefficient.d*ray->R0.x*ray->R0.y + coefficient.e*ray->R0.x*ray->R0.z + coefficient.f*ray->R0.y*ray->R0.z + coefficient.g*ray->R0.x+coefficient.h*ray->R0.y + coefficient.i*ray->R0.z+coefficient.j;
 
-        b = 2.0*coefficient.a*ray->R0.x*ray->Rd.x + 2.0*coefficient.b*ray->R0.y*ray->Rd.y + 2.0*coefficient.c*ray->R0.z*ray->Rd.z;
-        b += coefficient.d*(ray->R0.x*ray->Rd.y + ray->Rd.x*ray->R0.y);
-        b += coefficient.e*(ray->R0.x*ray->Rd.z + ray->Rd.x*ray->R0.z);
-        b += coefficient.f*(ray->R0.y*ray->Rd.z + ray->Rd.y*ray->R0.z);
-        b += coefficient.g*ray->Rd.x+coefficient.h*ray->Rd.y + coefficient.i*ray->Rd.z;
-
-        c = coefficient.a*ray->R0.x*ray->R0.x + coefficient.b*ray->R0.y*ray->R0.y + coefficient.c*ray->R0.z*ray->R0.z;
-        c += coefficient.d*ray->R0.x*ray->R0.y + coefficient.e*ray->R0.x*ray->R0.z + coefficient.f*ray->R0.y*ray->R0.z;
-        c += coefficient.g*ray->R0.x+coefficient.h*ray->R0.y + coefficient.i*ray->R0.z+coefficient.j;
-
+        double tMin, tMax;
         if(a == 0.0) {
             if(b == 0.0){
                 tMin = INF;
@@ -756,17 +749,16 @@ public:
 class Floor: public Object {
     double floorWidth;
     double tileWidth;
-    Color foregroundColor;
+    Color deepColor;
 
 public:
     Floor() {
         floorWidth = tileWidth = 0.0;
     }
 
-    Floor(double floorWidth, double tileWidth, Color foregroundColor) {
+    Floor(double floorWidth, double tileWidth) {
         this->floorWidth = floorWidth;
         this->tileWidth = tileWidth;
-        this->foregroundColor = foregroundColor;
     }
 
     void draw() {
@@ -774,13 +766,13 @@ public:
         row = round(floorWidth / tileWidth);
         int column;
         column = round(floorWidth / tileWidth);
-        for(int i=0; i< row; i++) {
+        for(int i=0; i<row; i++) {
             for(int j=0; j<column; j++) {
                 if((i+j)%2 == 0){
                     glColor3f(getColor().red,  getColor().green, getColor().blue);
                 }
                 else{
-                    glColor3f(foregroundColor.red, foregroundColor.green, foregroundColor.blue);
+                    glColor3f(deepColor.red, deepColor.green, deepColor.blue);
                 }
 
                 Vector3D leftBottomCorner(-floorWidth / 2.0 + tileWidth * j, -floorWidth / 2.0 + tileWidth * i, 0.0);
@@ -820,7 +812,7 @@ public:
             intersectionPointColor = getColor();
         }
         else{
-            intersectionPointColor = foregroundColor;
+            intersectionPointColor = deepColor;
         }
 
         //ambient component

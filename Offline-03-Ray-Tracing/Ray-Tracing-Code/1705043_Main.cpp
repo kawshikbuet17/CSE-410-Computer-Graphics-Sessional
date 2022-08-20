@@ -11,7 +11,7 @@ int pixelsAlongBothDimensions = 0;
 int noOfObjects = 0;
 int noOfPointLights = 0;
 int noOfSpotLights = 0;
-int bitmapImageCount;
+int imageCount;
 
 void init_pos_u_r_l(){
     pos.x = 100,
@@ -82,11 +82,11 @@ void capture() {
     int imageHeight = pixelsAlongBothDimensions;
 
     //initialize bitmap image and set background color
-    bitmap_image bitmapImage(imageWidth, imageHeight);
+    bitmap_image image(imageWidth, imageHeight);
 
     for(int column=0; column<imageWidth; column++) {
         for(int row=0; row<imageHeight; row++) {
-            bitmapImage.set_pixel(column, row, 0, 0, 0);  // color = black
+            image.set_pixel(column, row, 0, 0, 0);  // color = black
         }
     }
 
@@ -124,7 +124,10 @@ void capture() {
             if(nearest != INF) {
                 Color color;  // color = black
                 tMin = objects[nearest]->intersect(ray, color, 1);
-                bitmapImage.set_pixel(column, row, (int) round(color.red*255.0), (int) round(color.green*255.0), (int) round(color.blue*255.0));
+                int red = round(color.red * 255.0);
+                int green = round(color.green * 255.0);
+                int blue = round(color.blue * 255.0);
+                image.set_pixel(column, row, red, green, blue);
             }
         }
     }
@@ -133,9 +136,9 @@ void capture() {
     //The 1st image you capture after running
     //the program should be named Output_11.bmp, the 2nd image
     //you capture should be named Output_12.bmp and so on.
-    bitmapImageCount++;
-    string imageName = "Output_1"+to_string(bitmapImageCount)+".bmp";
-    bitmapImage.save_image("../" + imageName);
+    imageCount++;
+    string imageName = "Output_1" + to_string(imageCount) + ".bmp";
+    image.save_image("../" + imageName);
     cout << "Bitmap Image Captured | Image Name - " + imageName << endl;
 }
 
@@ -337,19 +340,14 @@ void init() {
     init_pos_u_r_l();
     drawaxes = 1;
 
-	bitmapImageCount = 0;
+    imageCount = 0;
 
-	/* clearing the screen */
 	glClearColor(0, 0, 0, 0);  // color = black
 
-	/* setting up projection here */
-	/* loading the PROJECTION matrix */
 	glMatrixMode(GL_PROJECTION);
 
-	/* initializing the matrix */
 	glLoadIdentity();
 
-    /* setting the camera perspective by providing necessary parameters */
 	gluPerspective(viewAngle, 1.0, 1.0, 1000.0);
 }
 
@@ -442,10 +440,9 @@ void loadData() {
     }
     fin.close();
 
-    /* creating a floor temp and pushing it to objects vector */
-    temp = new Floor(1000.0, 20.0, Color());  // color = black
+    temp = new Floor(1000.0, 20.0);
 
-    temp->setColor(Color(1.0, 1.0, 1.0));  // color = white
+    temp->setColor(Color(1.0, 1.0, 1.0));
     temp->setReflectionCoefficient(ReflectionCoefficient(0.25, 0.25, 0.25, 0.25));
     temp->setShine(15);
 
