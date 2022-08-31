@@ -5,6 +5,7 @@ using namespace std;
 #define PI 2*acos(0.0)
 #define INF 1e9
 
+
 class Vector3D {
 public:
     double x, y, z;
@@ -76,6 +77,12 @@ public:
         this->red = red;
         this->green = green;
         this->blue = blue;
+    }
+
+    void clipColor(){
+        if(red > 1.0) red = 1.0;
+        if(green > 1.0) green = 1.0;
+        if(blue > 1.0) blue = 1.0;
     }
 };
 
@@ -288,6 +295,7 @@ void pointLightDiffuseAndSpecular(Ray* ray, Vector3D& intersectionPoint, Vector3
         color.red += lights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(phongValue, shine);
         color.green += lights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(phongValue, shine);
         color.blue += lights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(phongValue, shine);
+        color.clipColor();
     }
 }
 
@@ -331,6 +339,7 @@ void spotLightDiffuseAndSpecular(Ray* ray, Vector3D& intersectionPoint, Vector3D
         color.red += spotlights[i].getColor().red * intersectionPointColor.red * reflectionCoefficient.specular * pow(phongValue, shine);
         color.green += spotlights[i].getColor().green * intersectionPointColor.green * reflectionCoefficient.specular * pow(phongValue, shine);
         color.blue += spotlights[i].getColor().blue * intersectionPointColor.blue * reflectionCoefficient.specular * pow(phongValue, shine);
+        color.clipColor();
     }
 }
 
@@ -412,7 +421,11 @@ public:
         else{
             double t1 = (-b - sqrt(discriminant)) / (2.0 * a);
             double t2 = (-b + sqrt(discriminant)) / (2.0 * a);
-            tMin = min(t1, t2);
+//            tMin = min(t1, t2);
+            if(t1 < 0)
+                tMin = t2;
+            else
+                tMin = t1;
         }
 
         if(level == 0) {
@@ -466,6 +479,9 @@ public:
         color.red += reflectedColor.red*reflectionCoefficient.recursive;
         color.green += reflectedColor.green*reflectionCoefficient.recursive;
         color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
+
+        color.clipColor();
+
         return tMin;
     }
 };
@@ -578,6 +594,8 @@ public:
         color.red += reflectedColor.red*reflectionCoefficient.recursive;
         color.green += reflectedColor.green*reflectionCoefficient.recursive;
         color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
+
+        color.clipColor();
 
         return tMin;
     }
@@ -742,6 +760,8 @@ public:
         color.green += reflectedColor.green*reflectionCoefficient.recursive;
         color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
 
+        color.clipColor();
+
         return tMin;
     }
 };
@@ -790,6 +810,9 @@ public:
     double intersect(Ray* ray, Color& color, int level) {
         //Normal = (0,0,1)
         double xn = 0.0, yn = 0.0, zn = 1.0;
+
+        if(pos.z < 0)
+            zn = -1;
         Vector3D normal(xn, yn, zn);
 
         //t = -(D + n·Ro) / n·Rd
@@ -843,6 +866,8 @@ public:
         color.red += reflectedColor.red*reflectionCoefficient.recursive;
         color.green += reflectedColor.green*reflectionCoefficient.recursive;
         color.blue += reflectedColor.blue*reflectionCoefficient.recursive;
+
+        color.clipColor();
 
         return tMin;
     }
